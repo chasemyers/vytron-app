@@ -127,14 +127,21 @@ $("#btnFill").addEventListener("click", async () => {
   window.scrollTo({ top: 0, behavior: "smooth" });
 });
 
-// Detail → Open QR page (your existing static page by slug)
+function slugToPath(id) {
+  // Your files are /equipment/line4-*.html, while IDs are l4-*.
+  if (id.startsWith("l4-")) {
+    return `equipment/line4-${id.slice(3)}.html`;
+  }
+  // fallback: try folder style
+  return `${id}/`;
+}
+
 $("#btnToQR").addEventListener("click", () => {
   if (!selectedId) return;
-  // If you want to map to your existing per-equipment pages, keep this format:
-  // e.g., https://chasemyers.github.io/vytron-app/l4-extruder/
-  const url = `https://chasemyers.github.io/vytron-app/${selectedId}/`;
+  const url = `https://chasemyers.github.io/vytron-app/${slugToPath(selectedId)}`;
   window.open(url, "_blank");
 });
+
 
 // Deep-link to a specific item (hash)
 if (location.hash) {
