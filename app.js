@@ -1,4 +1,3 @@
-<script type="module">
 // ---------- Firebase (CDN modules) ----------
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
@@ -229,4 +228,3 @@ $("#btnToQR").addEventListener("click", () => {
   const id = params.get("id");
   if (id) selectItem(id);
 })();
-</script>
