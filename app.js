@@ -20,6 +20,39 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db  = getFirestore(app);
 
+// Check if URL has an equipment ID (e.g. ?id=l4-extruder)
+const params = new URLSearchParams(window.location.search);
+const equipmentIdFromURL = params.get("id");
+
+if (equipmentIdFromURL) {
+  // Load this equipment directly
+  loadEquipmentById(equipmentIdFromURL);
+}
+
+// Function to load and display equipment by ID
+async function loadEquipmentById(id) {
+  try {
+    const docRef = doc(db, "equipment", id);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      selectedId = id;
+
+      // Populate fields on page
+      $("#equipmentName").textContent = data.name || "";
+      $("#equipmentCategory").textContent = data.category || "";
+      $("#equipmentLocation").textContent = data.location || "";
+      $("#equipmentNotes").textContent = data.notes || "";
+    } else {
+      console.error("No such equipment!");
+    }
+  } catch (error) {
+    console.error("Error loading equipment:", error);
+  }
+}
+
+
 // ---------- CONFIG YOU MAY EDIT ----------
 const GITHUB_BASE = "https://chasemyers.github.io/vytron-app/"; // <- your Pages root
 const COLLECTION  = "equipment";                                  // Firestore collection
@@ -184,7 +217,7 @@ refs.btnFill?.addEventListener("click", (e) => {
 
 $("#btnToQR").addEventListener("click", () => {
   if (!selectedId) return;
-  const url = `https://chasemyers.github.io/vytron-app/?id=${selectedId}`;
+  const url = `https://chasemyers.github.io/vytron-app/?id=${encodeURIComponent(selectedId)}`;
   window.open(url, "_blank");
 });
 
