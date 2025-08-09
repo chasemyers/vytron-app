@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Equipment</title>
+  <style>
+    :root { color-scheme: dark; font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    body { margin:0; padding:20px; background:#111; color:#eee; }
+    .card { background:#0f0f0f; border:1px solid #1f1f1f; border-radius:12px; padding:16px; }
+    .meta { opacity:.75; }
+    a.btn { display:inline-block; margin-top:12px; padding:10px 14px; border-radius:8px; background:#2b6fff; color:#fff; text-decoration:none; }
+  </style>
+</head>
+<body>
+  <div class="card" id="box">Loading…</div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    const cfg = {
+      apiKey: "AIzaSyAYA7OzOQBpyHsOYIDK89Z4-8BbrRleZ7A",
+      authDomain: "vytron-maintenance-app.firebaseapp.com",
+      projectId: "vytron-maintenance-app",
+    };
+    const app = initializeApp(cfg);
+    const db  = getFirestore(app);
+
+    const params = new URLSearchParams(location.search);
+    const id = params.get("id");
+    const box = document.getElementById("box");
+
+    if (!id) {
+      box.textContent = "Missing ?id=…";
+    } else {
+      const snap = await getDoc(doc(db, "equipment", id));
+      if (!snap.exists()) {
+        box.textContent = `No equipment found for ID "${id}".`;
+      } else {
+        const d = snap.data();
+        box.innerHTML = `
+          <h2>${d.name || "(unnamed)"} <span class="meta">• ${id}</span></h2>
+          <div class="meta">Line: ${d.line || ""} • Station: ${d.station || ""}</div>
+          <div class="meta">Make/Model: ${d.make || ""} ${d.model || ""}</div>
+          <div class="meta">Serial: ${d.serial || ""}</div>
+          <div class="meta">Location: ${d.location || ""}</div>
+          ${d.notes ? `<p style="margin-top:12px">${d.notes}</p>` : ""}
+          <a class="btn" href="./">Back to list</a>
+        `;
+      }
+    }
+  </script>
+</body>
+</html>
