@@ -1,15 +1,17 @@
-// Firebase (CDN modules)
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
+<script type="module">
+// ---------- Firebase (CDN modules) ----------
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
-  getFirestore, doc, setDoc, getDoc, collection, onSnapshot, serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+  getFirestore, doc, getDoc, setDoc, getDocs, collection,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-// Your config (safe to embed)
+// ---------- Firebase config ----------
 const firebaseConfig = {
   apiKey: "AIzaSyAYA7OzOQBpyHsOYIDK89Z4-8BbrRleZ7A",
   authDomain: "vytron-maintenance-app.firebaseapp.com",
   projectId: "vytron-maintenance-app",
-  storageBucket: "vytron-maintenance-app.appspot.com",
+  storageBucket: "vytron-maintenance-app.firebasestorage.app",
   messagingSenderId: "951172681125",
   appId: "1:951172681125:web:278450c515a89547f32c4c",
   measurementId: "G-FEKBB1K6V7"
@@ -18,132 +20,179 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db  = getFirestore(app);
 
-// UI helpers
-const $ = (s) => document.querySelector(s);
-const listEl = $("#list");
-const saveMsg = $("#saveMsg");
-const detail = $("#detail");
-const detailBody = $("#detailBody");
-let selectedId = null;
+// ---------- CONFIG YOU MAY EDIT ----------
+const GITHUB_BASE = "https://chasemyers.github.io/vytron-app/"; // <- your Pages root
+const COLLECTION  = "equipment";                                  // Firestore collection
+// ----------------------------------------
 
-// Live list
-const col = collection(db, "equipment");
-onSnapshot(col, (snap) => {
-  if (snap.empty) {
-    listEl.textContent = "No equipment yet — add one above.";
-    return;
-  }
-  const items = [];
-  snap.forEach(doc => {
-    const d = doc.data();
-    const title = `Line ${d.line || ""} — ${d.station || ""}`.replace(/ — $/, "");
-    items.push(`
-      <a class="row" href="#${doc.id}" data-id="${doc.id}">
-        <div style="flex:1">
-          <div><strong>${d.name || doc.id}</strong></div>
-          <div class="meta">${title} • ${d.make || "-"} ${d.model || ""}</div>
-        </div>
-        <div class="meta">${doc.id}</div>
-      </a>
-    `);
-  });
-  listEl.innerHTML = items.join("");
-  // wire clicks
-  listEl.querySelectorAll("a.row").forEach(a => {
-    a.addEventListener("click", (e) => {
-      e.preventDefault();
-      showDetail(a.dataset.id);
-    });
-  });
-});
+// Shorthand
+const $  = (sel, el=document) => el.querySelector(sel);
+const $$ = (sel, el=document) => [...el.querySelectorAll(sel)];
 
-// Detail panel
-async function showDetail(id) {
-  selectedId = id;
-  const snap = await getDoc(doc(db, "equipment", id));
-  if (!snap.exists()) {
-    detailBody.textContent = "Not found.";
-    detail.style.display = "";
-    return;
-  }
-  const d = snap.data();
-  detailBody.innerHTML = `
-    <div><strong>${d.name || id}</strong></div>
-    <div class="meta">Line ${d.line || ""} • ${d.station || ""}</div>
-    <div>Make/Model: ${d.make || "-"} ${d.model || ""}</div>
-    <div>Serial: ${d.serial || "-"}</div>
-    <div>Location: ${d.location || "-"}</div>
-    <div>Notes: ${d.notes || "-"}</div>
-    <div class="meta" style="margin-top:6px">ID: ${id}</div>
-  `;
-  detail.style.display = "";
+// DOM refs (must exist in your HTML)
+const refs = {
+  form:        $("#frm"),
+  id:          $("#f_id"),
+  name:        $("#f_name"),
+  line:        $("#f_line"),
+  station:     $("#f_station"),
+  make:        $("#f_make"),
+  model:       $("#f_model"),
+  serial:      $("#f_serial"),
+  location:    $("#f_location"),
+  notes:       $("#f_notes"),
+  btnSave:     $("#btnSave"),
+  btnFill:     $("#btnFill"),
+  btnToQR:     $("#btnToQR"),
+  list:        $("#list"),
+  selectedBox: $("#selected")
+};
+
+let selectedId = ""; // currently highlighted item
+
+// --- Helpers ---------------------------------------------------------------
+const slugify = s => (s||"")
+  .toLowerCase().trim()
+  .replace(/[^a-z0-9]+/g,"-")
+  .replace(/(^-|-$)/g,"");
+
+/** Map a Firestore ID to a static file path */
+function slugToPath(id) {
+  // Rule: files live at /equipment/<id>.html
+  return `equipment/${id}.html`;
 }
 
-// Save (create/update)
-$("#btnSave").addEventListener("click", async () => {
-  const id = $("#f_id").value.trim();
-  if (!id) { saveMsg.textContent = "ID is required."; return; }
-  const data = {
-    name: $("#f_name").value.trim(),
-    line: $("#f_line").value.trim(),
-    station: $("#f_station").value.trim(),
-    make: $("#f_make").value.trim(),
-    model: $("#f_model").value.trim(),
-    serial: $("#f_serial").value.trim(),
-    location: $("#f_location").value.trim(),
-    notes: $("#f_notes").value.trim(),
-    updatedAt: serverTimestamp(),
-  };
-  try {
-    await setDoc(doc(db, "equipment", id), data, { merge: true });
-    saveMsg.textContent = "Saved ✓";
-    setTimeout(()=> saveMsg.textContent="", 1200);
-  } catch (e) {
-    saveMsg.textContent = "Error: " + e.message;
-  }
-});
+function detailUrlFor(id) {
+  // Try static file; if it 404s, user can still reach dynamic view with ?id=
+  return `${GITHUB_BASE}${slugToPath(id)}`;
+}
 
-// Clear form
-$("#btnClear").addEventListener("click", () => {
-  ["f_id","f_name","f_line","f_station","f_make","f_model","f_serial","f_location","f_notes"]
-    .forEach(id => { document.getElementById(id).value = ""; });
-});
+function dynamicUrlFor(id) {
+  // Always works (no static file needed)
+  return `${GITHUB_BASE}?id=${encodeURIComponent(id)}`;
+}
 
-// Detail → Load into form
-$("#btnFill").addEventListener("click", async () => {
-  if (!selectedId) return;
-  const snap = await getDoc(doc(db, "equipment", selectedId));
+function docToRow(d, id) {
+  return `
+    <button class="row" data-id="${id}">
+      <strong>${d.name || id}</strong>
+      <span class="muted"> • Line ${d.line || "?"}</span>
+      <span class="muted"> • ${d.model || ""}</span>
+    </button>
+  `;
+}
+
+function selectedPreview(d, id) {
+  return `
+    <div><strong>ID:</strong> ${id}</div>
+    <div><strong>Line:</strong> ${d.line || ""}</div>
+    <div><strong>Station:</strong> ${d.station || ""}</div>
+    <div><strong>Make/Model:</strong> ${d.make || ""} ${d.model || ""}</div>
+    <div><strong>Serial:</strong> ${d.serial || ""}</div>
+    <div><strong>Location:</strong> ${d.location || ""}</div>
+    <div><strong>Notes:</strong> ${d.notes || ""}</div>
+  `;
+}
+
+// --- Data I/O --------------------------------------------------------------
+async function loadList() {
+  const snap = await getDocs(collection(db, COLLECTION));
+  const rows = [];
+  snap.forEach(docSnap => {
+    const d = docSnap.data();
+    rows.push(docToRow(d, docSnap.id));
+  });
+  refs.list.innerHTML = rows.sort().join("") || "<div class='muted'>No equipment yet.</div>";
+  // bind clicks
+  $$(".row", refs.list).forEach(btn => {
+    btn.addEventListener("click", () => selectItem(btn.dataset.id));
+  });
+}
+
+async function selectItem(id) {
+  selectedId = id;
+  const snap = await getDoc(doc(db, COLLECTION, id));
   if (!snap.exists()) return;
   const d = snap.data();
-  $("#f_id").value = selectedId;
-  $("#f_name").value = d.name || "";
-  $("#f_line").value = d.line || "";
-  $("#f_station").value = d.station || "";
-  $("#f_make").value = d.make || "";
-  $("#f_model").value = d.model || "";
-  $("#f_serial").value = d.serial || "";
-  $("#f_location").value = d.location || "";
-  $("#f_notes").value = d.notes || "";
-  window.scrollTo({ top: 0, behavior: "smooth" });
-});
+  refs.selectedBox.innerHTML = selectedPreview(d, id);
+}
 
-function slugToPath(id) {
-  // Your files are /equipment/line4-*.html, while IDs are l4-*.
-  if (id.startsWith("l4-")) {
-    return `equipment/line4-${id.slice(3)}.html`;
+async function saveForm() {
+  // Use provided ID or generate from name/line
+  let id = (refs.id.value || "").trim();
+  if (!id) {
+    id = slugify(`line${refs.line.value}-${refs.name.value || "equipment"}`);
+    refs.id.value = id; // reflect generated id in the form
   }
-  // fallback: try folder style
-  return `${id}/`;
+  // Build payload
+  const payload = {
+    name:     refs.name.value.trim(),
+    line:     (refs.line.value || "").toString().trim(),
+    station:  refs.station.value.trim(),
+    make:     refs.make.value.trim(),
+    model:    refs.model.value.trim(),
+    serial:   refs.serial.value.trim(),
+    location: refs.location.value.trim(),
+    notes:    refs.notes.value.trim(),
+    updatedAt: serverTimestamp()
+  };
+  await setDoc(doc(db, COLLECTION, id), payload, { merge: true });
+  selectedId = id;
+  await loadList();
+  await selectItem(id);
 }
 
-$("#btnToQR").addEventListener("click", () => {
+// Fill the form from the currently selected doc (no overwrite if missing)
+async function loadIntoForm() {
   if (!selectedId) return;
-  const url = `https://chasemyers.github.io/vytron-app/${slugToPath(selectedId)}`;
-  window.open(url, "_blank");
+  const snap = await getDoc(doc(db, COLLECTION, selectedId));
+  if (!snap.exists()) return;
+  const d = snap.data();
+
+  refs.id.value       = selectedId;
+  refs.name.value     = d.name || "";
+  refs.line.value     = d.line || "";
+  refs.station.value  = d.station || "";
+  refs.make.value     = d.make || "";
+  refs.model.value    = d.model || "";
+  refs.serial.value   = d.serial || "";
+  refs.location.value = d.location || "";
+  refs.notes.value    = d.notes || "";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+// Open the QR page (prefer static; always offer dynamic fallback)
+function openQrPage() {
+  if (!selectedId) return;
+  const staticUrl  = detailUrlFor(selectedId);
+  // open static in new tab; also show a toast-like hint for fallback
+  window.open(staticUrl, "_blank");
+  // Optional: also log the dynamic link in console for quick copy
+  console.log("Dynamic (always works):", dynamicUrlFor(selectedId));
+}
+
+// --- Wire UI ---------------------------------------------------------------
+refs.btnSave?.addEventListener("click", (e) => {
+  e.preventDefault();
+  saveForm().catch(console.error);
 });
 
+refs.btnFill?.addEventListener("click", (e) => {
+  e.preventDefault();
+  loadIntoForm().catch(console.error);
+});
 
-// Deep-link to a specific item (hash)
-if (location.hash) {
-  showDetail(location.hash.slice(1));
-}
+refs.btnToQR?.addEventListener("click", (e) => {
+  e.preventDefault();
+  openQrPage();
+});
+
+// Deep-link: ?id=<docId> to show one item on load
+(function boot() {
+  loadList().catch(console.error);
+
+  const params = new URLSearchParams(location.search);
+  const id = params.get("id");
+  if (id) selectItem(id);
+})();
+</script>
