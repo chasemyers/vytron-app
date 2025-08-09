@@ -182,9 +182,10 @@ refs.btnFill?.addEventListener("click", (e) => {
   loadIntoForm().catch(console.error);
 });
 
-refs.btnToQR?.addEventListener("click", (e) => {
-  e.preventDefault();
-  openQrPage();
+$("#btnToQR").addEventListener("click", () => {
+  if (!selectedId) return;
+  const url = `https://chasemyers.github.io/vytron-app/?id=${selectedId}`;
+  window.open(url, "_blank");
 });
 
 // Deep-link: ?id=<docId> to show one item on load
