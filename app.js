@@ -125,9 +125,9 @@ $("#btnFill").addEventListener("click", async () => {
 
 // ---------- Open QR page (GitHub Pages route)
 function slugToPath(id) {
-  // for now, just /equipment/<id>.html
-  return `equipment/${id}.html`;
+  return `equip.html?id=${encodeURIComponent(id)}`;
 }
+
 $("#btnToQR").addEventListener("click", () => {
   if (!selectedId) return;
   const url = `https://chasemyers.github.io/vytron-app/${slugToPath(selectedId)}`;
