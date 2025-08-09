@@ -1,230 +1,148 @@
-// ---------- Firebase (CDN modules) ----------
+// --------- Firebase (CDN modules) ---------
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
-  getFirestore, doc, getDoc, setDoc, getDocs, collection,
-  serverTimestamp
+    getFirestore, doc, getDoc, getDocs, collection, setDoc, deleteDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-// ---------- Firebase config ----------
+// --------- Firebase config ---------
 const firebaseConfig = {
-  apiKey: "AIzaSyAYA7OzOQBpyHsOYIDK89Z4-8BbrRleZ7A",
-  authDomain: "vytron-maintenance-app.firebaseapp.com",
-  projectId: "vytron-maintenance-app",
-  storageBucket: "vytron-maintenance-app.firebasestorage.app",
-  messagingSenderId: "951172681125",
-  appId: "1:951172681125:web:278450c515a89547f32c4c",
-  measurementId: "G-FEKBB1K6V7"
+    apiKey: "AIzaSyAYA7Ozq0BpvHSOYIDK89Z4-8BbrRleZ7A",
+    authDomain: "vytron-maintenance-app.firebaseapp.com",
+    projectId: "vytron-maintenance-app",
+    storageBucket: "vytron-maintenance-app.appspot.com",
+    messagingSenderId: "951172681125",
+    appId: "1:951172681125:web:278450c515a89547f32c4c",
+    measurementId: "G-FEKBK81K6V"
 };
 
 const app = initializeApp(firebaseConfig);
-const db  = getFirestore(app);
+const db = getFirestore(app);
 
-// Check if URL has an equipment ID (e.g. ?id=l4-extruder)
-const params = new URLSearchParams(window.location.search);
-const equipmentIdFromURL = params.get("id");
+let selectedId = null;
 
-if (equipmentIdFromURL) {
-  // Load this equipment directly
-  loadEquipmentById(equipmentIdFromURL);
+// Load all equipment from Firestore
+async function loadEquipmentList() {
+    const listDiv = document.getElementById("list");
+    listDiv.innerHTML = "Loading...";
+
+    try {
+        const querySnapshot = await getDocs(collection(db, "equipment"));
+        let html = "";
+        querySnapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            html += `<div class="item" data-id="${docSnap.id}">
+                        ${docSnap.id} &bull; Line ${data.line || "?"} &bull; ${data.name || "?"}
+                     </div>`;
+        });
+        listDiv.innerHTML = html;
+
+        document.querySelectorAll(".item").forEach((el) => {
+            el.addEventListener("click", () => selectItem(el.dataset.id));
+        });
+    } catch (err) {
+        console.error("Error loading list:", err);
+        listDiv.innerHTML = "Error loading list.";
+    }
 }
 
-// Function to load and display equipment by ID
-async function loadEquipmentById(id) {
-  try {
+// Select an item from the list
+async function selectItem(id) {
+    selectedId = id;
     const docRef = doc(db, "equipment", id);
     const docSnap = await getDoc(docRef);
 
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      selectedId = id;
+    if (!docSnap.exists()) return;
 
-      // Populate fields on page
-      $("#equipmentName").textContent = data.name || "";
-      $("#equipmentCategory").textContent = data.category || "";
-      $("#equipmentLocation").textContent = data.location || "";
-      $("#equipmentNotes").textContent = data.notes || "";
-    } else {
-      console.error("No such equipment!");
+    const data = docSnap.data();
+    const detailBody = document.getElementById("detailBody");
+    if (detailBody) {
+        detailBody.innerHTML = `
+            <p><strong>ID:</strong> ${id}</p>
+            <p><strong>Name:</strong> ${data.name || ""}</p>
+            <p><strong>Line:</strong> ${data.line || ""}</p>
+            <p><strong>Station:</strong> ${data.station || ""}</p>
+            <p><strong>Make:</strong> ${data.make || ""}</p>
+            <p><strong>Model:</strong> ${data.model || ""}</p>
+            <p><strong>Serial:</strong> ${data.serial || ""}</p>
+            <p><strong>Location:</strong> ${data.location || ""}</p>
+            <p><strong>Notes:</strong> ${data.notes || ""}</p>
+        `;
     }
-  } catch (error) {
-    console.error("Error loading equipment:", error);
-  }
 }
 
+// Save button
+document.getElementById("btnSave").addEventListener("click", async () => {
+    const id = document.getElementById("f_id").value.trim();
+    if (!id) return alert("ID is required");
 
-// ---------- CONFIG YOU MAY EDIT ----------
-const GITHUB_BASE = "https://chasemyers.github.io/vytron-app/"; // <- your Pages root
-const COLLECTION  = "equipment";                                  // Firestore collection
-// ----------------------------------------
+    const data = {
+        name: document.getElementById("f_name").value.trim(),
+        line: document.getElementById("f_line").value.trim(),
+        station: document.getElementById("f_station").value.trim(),
+        make: document.getElementById("f_make").value.trim(),
+        model: document.getElementById("f_model").value.trim(),
+        serial: document.getElementById("f_serial").value.trim(),
+        location: document.getElementById("f_location").value.trim(),
+        notes: document.getElementById("f_notes").value.trim(),
+        updated: serverTimestamp()
+    };
 
-// Shorthand
-const $  = (sel, el=document) => el.querySelector(sel);
-const $$ = (sel, el=document) => [...el.querySelectorAll(sel)];
+    try {
+        await setDoc(doc(db, "equipment", id), data);
+        alert("Saved successfully!");
+        loadEquipmentList();
+    } catch (err) {
+        console.error("Error saving document:", err);
+    }
+});
 
-// DOM refs (must exist in your HTML)
-const refs = {
-  form:        $("#frm"),
-  id:          $("#f_id"),
-  name:        $("#f_name"),
-  line:        $("#f_line"),
-  station:     $("#f_station"),
-  make:        $("#f_make"),
-  model:       $("#f_model"),
-  serial:      $("#f_serial"),
-  location:    $("#f_location"),
-  notes:       $("#f_notes"),
-  btnSave:     $("#btnSave"),
-  btnFill:     $("#btnFill"),
-  btnToQR:     $("#btnToQR"),
-  list:        $("#list"),
-  selectedBox: $("#selected")
-};
+// Clear button
+document.getElementById("btnClear").addEventListener("click", () => {
+    document.getElementById("f_id").value = "";
+    document.getElementById("f_name").value = "";
+    document.getElementById("f_line").value = "";
+    document.getElementById("f_station").value = "";
+    document.getElementById("f_make").value = "";
+    document.getElementById("f_model").value = "";
+    document.getElementById("f_serial").value = "";
+    document.getElementById("f_location").value = "";
+    document.getElementById("f_notes").value = "";
+    selectedId = null;
+});
 
-let selectedId = ""; // currently highlighted item
+// Load into form
+document.getElementById("btnFill").addEventListener("click", async () => {
+    if (!selectedId) return;
+    const docRef = doc(db, "equipment", selectedId);
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) return;
 
-// --- Helpers ---------------------------------------------------------------
-const slugify = s => (s||"")
-  .toLowerCase().trim()
-  .replace(/[^a-z0-9]+/g,"-")
-  .replace(/(^-|-$)/g,"");
-
-/** Map a Firestore ID to a static file path */
-function slugToPath(id) {
-  // Rule: files live at /equipment/<id>.html
-  return `equipment/${id}.html`;
-}
-
-function detailUrlFor(id) {
-  // Try static file; if it 404s, user can still reach dynamic view with ?id=
-  return `${GITHUB_BASE}${slugToPath(id)}`;
-}
-
-function dynamicUrlFor(id) {
-  // Always works (no static file needed)
-  return `${GITHUB_BASE}?id=${encodeURIComponent(id)}`;
-}
-
-function docToRow(d, id) {
-  return `
-    <button class="row" data-id="${id}">
-      <strong>${d.name || id}</strong>
-      <span class="muted"> • Line ${d.line || "?"}</span>
-      <span class="muted"> • ${d.model || ""}</span>
-    </button>
-  `;
-}
-
-function selectedPreview(d, id) {
-  return `
-    <div><strong>ID:</strong> ${id}</div>
-    <div><strong>Line:</strong> ${d.line || ""}</div>
-    <div><strong>Station:</strong> ${d.station || ""}</div>
-    <div><strong>Make/Model:</strong> ${d.make || ""} ${d.model || ""}</div>
-    <div><strong>Serial:</strong> ${d.serial || ""}</div>
-    <div><strong>Location:</strong> ${d.location || ""}</div>
-    <div><strong>Notes:</strong> ${d.notes || ""}</div>
-  `;
-}
-
-// --- Data I/O --------------------------------------------------------------
-async function loadList() {
-  const snap = await getDocs(collection(db, COLLECTION));
-  const rows = [];
-  snap.forEach(docSnap => {
     const d = docSnap.data();
-    rows.push(docToRow(d, docSnap.id));
-  });
-  refs.list.innerHTML = rows.sort().join("") || "<div class='muted'>No equipment yet.</div>";
-  // bind clicks
-  $$(".row", refs.list).forEach(btn => {
-    btn.addEventListener("click", () => selectItem(btn.dataset.id));
-  });
-}
-
-async function selectItem(id) {
-  selectedId = id;
-  const snap = await getDoc(doc(db, COLLECTION, id));
-  if (!snap.exists()) return;
-  const d = snap.data();
-  refs.selectedBox.innerHTML = selectedPreview(d, id);
-}
-
-async function saveForm() {
-  // Use provided ID or generate from name/line
-  let id = (refs.id.value || "").trim();
-  if (!id) {
-    id = slugify(`line${refs.line.value}-${refs.name.value || "equipment"}`);
-    refs.id.value = id; // reflect generated id in the form
-  }
-  // Build payload
-  const payload = {
-    name:     refs.name.value.trim(),
-    line:     (refs.line.value || "").toString().trim(),
-    station:  refs.station.value.trim(),
-    make:     refs.make.value.trim(),
-    model:    refs.model.value.trim(),
-    serial:   refs.serial.value.trim(),
-    location: refs.location.value.trim(),
-    notes:    refs.notes.value.trim(),
-    updatedAt: serverTimestamp()
-  };
-  await setDoc(doc(db, COLLECTION, id), payload, { merge: true });
-  selectedId = id;
-  await loadList();
-  await selectItem(id);
-}
-
-// Fill the form from the currently selected doc (no overwrite if missing)
-async function loadIntoForm() {
-  if (!selectedId) return;
-  const snap = await getDoc(doc(db, COLLECTION, selectedId));
-  if (!snap.exists()) return;
-  const d = snap.data();
-
-  refs.id.value       = selectedId;
-  refs.name.value     = d.name || "";
-  refs.line.value     = d.line || "";
-  refs.station.value  = d.station || "";
-  refs.make.value     = d.make || "";
-  refs.model.value    = d.model || "";
-  refs.serial.value   = d.serial || "";
-  refs.location.value = d.location || "";
-  refs.notes.value    = d.notes || "";
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-// Open the QR page (prefer static; always offer dynamic fallback)
-function openQrPage() {
-  if (!selectedId) return;
-  const staticUrl  = detailUrlFor(selectedId);
-  // open static in new tab; also show a toast-like hint for fallback
-  window.open(staticUrl, "_blank");
-  // Optional: also log the dynamic link in console for quick copy
-  console.log("Dynamic (always works):", dynamicUrlFor(selectedId));
-}
-
-// --- Wire UI ---------------------------------------------------------------
-refs.btnSave?.addEventListener("click", (e) => {
-  e.preventDefault();
-  saveForm().catch(console.error);
+    document.getElementById("f_id").value = selectedId;
+    document.getElementById("f_name").value = d.name || "";
+    document.getElementById("f_line").value = d.line || "";
+    document.getElementById("f_station").value = d.station || "";
+    document.getElementById("f_make").value = d.make || "";
+    document.getElementById("f_model").value = d.model || "";
+    document.getElementById("f_serial").value = d.serial || "";
+    document.getElementById("f_location").value = d.location || "";
+    document.getElementById("f_notes").value = d.notes || "";
+    window.scrollTo({ top: 0, behavior: "smooth" });
 });
 
-refs.btnFill?.addEventListener("click", (e) => {
-  e.preventDefault();
-  loadIntoForm().catch(console.error);
+// Open QR page
+function slugToPath(id) {
+    if (id.startsWith("l4-")) {
+        return `equipment/line4-${id.slice(3)}.html`;
+    }
+    return `${id}/`;
+}
+
+document.getElementById("btnToQR").addEventListener("click", () => {
+    if (!selectedId) return;
+    const url = `https://chasemyers.github.io/vytron-app/${slugToPath(selectedId)}`;
+    window.open(url, "_blank");
 });
 
-$("#btnToQR").addEventListener("click", () => {
-  if (!selectedId) return;
-  const url = `https://chasemyers.github.io/vytron-app/?id=${encodeURIComponent(selectedId)}`;
-  window.open(url, "_blank");
-});
-
-// Deep-link: ?id=<docId> to show one item on load
-(function boot() {
-  loadList().catch(console.error);
-
-  const params = new URLSearchParams(location.search);
-  const id = params.get("id");
-  if (id) selectItem(id);
-})();
+// Initial load
+loadEquipmentList();
