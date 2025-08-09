@@ -1,26 +1,52 @@
 <!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vytron • QR Pilot (Line 4)</title>
-<style>
-  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; }
-  h1 { margin:0 0 8px 0; }
-  .row { display:block; padding:14px 16px; border:1px solid #ddd; border-radius:12px; margin:10px 0; text-decoration:none; color:#111; }
-  .row:hover { background:#fafafa; }
-  .title { font-weight:600; }
-  .sub { color:#666; font-size:14px; }
-</style>
-</head>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vytron • QR Pilot</title><style>
+:root {font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; line-height:1.45;}
+body {max-width: 680px; margin: 24px auto; padding: 0 16px;}
+a {text-decoration: none;}
+.card {border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04);}
+h1 {font-size: 24px; margin: 8px 0 16px;}
+h2 {font-size: 18px; margin: 0 0 8px;}
+.meta {color: #6b7280; font-size: 14px}
+.btn {display:inline-block; border:1px solid #111827; padding:10px 12px; border-radius:10px; margin-top:12px}
+.back {font-size:14px; color:#374151}
+ul {margin: 8px 0 0 20px;}
+small{color:#6b7280}
+footer{margin-top:32px; color:#6b7280; font-size:12px}
+</style></head>
 <body>
-  <h1>Vytron • QR Pilot</h1>
-  <p>Public test pages for Line 4 equipment. Add more items here as we go.</p>
-  <a class="row" href="./l4-loader/"><div class="title">Line 4 — Loader/Hopper</div><div class="sub">Loader Receiver</div></a>
-<a class="row" href="./l4-extruder/"><div class="title">Line 4 — Extruder</div><div class="sub">Extruder</div></a>
-<a class="row" href="./l4-cooler/"><div class="title">Line 4 — Cooler</div><div class="sub">Inline Water Cooler</div></a>
-<a class="row" href="./l4-puller/"><div class="title">Line 4 — Puller</div><div class="sub">Dual Roller Puller</div></a>
-<a class="row" href="./l4-winder/"><div class="title">Line 4 — Winder</div><div class="sub">Winder</div></a>
-<a class="row" href="./l4-panels/"><div class="title">Line 4 — Electrical</div><div class="sub">Line 4 Panels</div></a>
-</body>
-</html>
+<h1>Vytron • QR Pilot</h1>
+<p class="meta">Public test pages for Line 4 equipment. Add more items as we go.</p>
+
+<div class="card">
+  <h2>Line 4 — Loader/Hopper</h2>
+  <div class="meta">Coperion K‑Tron LDR LSR‑2410 (115V) • Part #5188‑14M</div>
+  <p><a class="btn" href="equipment/line4-loader.html">Open equipment page</a></p>
+</div>
+
+<div class="card">
+  <h2>Line 4 — Extruder</h2>
+  <div class="meta">NRM Pacemaker III</div>
+  <p><a class="btn" href="equipment/line4-extruder.html">Open equipment page</a></p>
+</div>
+
+<div class="card">
+  <h2>Line 4 — Water Trough Cooler</h2>
+  <div class="meta">Custom cooler (Vytron Fabrication)</div>
+  <p><a class="btn" href="equipment/line4-cooler.html">Open equipment page</a></p>
+</div>
+
+<div class="card">
+  <h2>Line 4 — Puller</h2>
+  <div class="meta">Dual-drum water puller • VFD drive</div>
+  <p><a class="btn" href="equipment/line4-puller.html">Open equipment page</a></p>
+</div>
+
+<div class="card">
+  <h2>Line 4 — Winder</h2>
+  <div class="meta">Custom winder • Foot pedal</div>
+  <p><a class="btn" href="equipment/line4-winder.html">Open equipment page</a></p>
+</div>
+
+<footer>v0.1 pilot • You can add/edit these pages later without changing QR codes.</footer>
+</body></html>
