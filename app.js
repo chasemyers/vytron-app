@@ -1,148 +1,138 @@
-// --------- Firebase (CDN modules) ---------
+// ---------- Firebase (CDN modules)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
-    getFirestore, doc, getDoc, getDocs, collection, setDoc, deleteDoc, serverTimestamp
+  getFirestore, doc, getDoc, setDoc, getDocs, collection, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-// --------- Firebase config ---------
+// ---------- Your Firebase config (from your console)
 const firebaseConfig = {
-    apiKey: "AIzaSyAYA7Ozq0BpvHSOYIDK89Z4-8BbrRleZ7A",
-    authDomain: "vytron-maintenance-app.firebaseapp.com",
-    projectId: "vytron-maintenance-app",
-    storageBucket: "vytron-maintenance-app.appspot.com",
-    messagingSenderId: "951172681125",
-    appId: "1:951172681125:web:278450c515a89547f32c4c",
-    measurementId: "G-FEKBK81K6V"
+  apiKey: "AIzaSyAYA7OzOQBpyHsOYIDK89Z4-8BbrRleZ7A",
+  authDomain: "vytron-maintenance-app.firebaseapp.com",
+  projectId: "vytron-maintenance-app",
+  storageBucket: "vytron-maintenance-app.firebasestorage.app",
+  messagingSenderId: "951172681125",
+  appId: "1:951172681125:web:278450c515a89547f32c4c",
+  measurementId: "G-FEKB8K16V7",
 };
 
+// ---------- Init
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const db  = getFirestore(app);
 
+// ---------- DOM helpers
+const $ = (sel) => document.querySelector(sel);
+const listEl   = $("#list");
+const detailEl = $("#detail");
+const detailBody = $("#detailBody");
+
+// ---------- State
 let selectedId = null;
 
-// Load all equipment from Firestore
-async function loadEquipmentList() {
-    const listDiv = document.getElementById("list");
-    listDiv.innerHTML = "Loading...";
-
-    try {
-        const querySnapshot = await getDocs(collection(db, "equipment"));
-        let html = "";
-        querySnapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            html += `<div class="item" data-id="${docSnap.id}">
-                        ${docSnap.id} &bull; Line ${data.line || "?"} &bull; ${data.name || "?"}
-                     </div>`;
-        });
-        listDiv.innerHTML = html;
-
-        document.querySelectorAll(".item").forEach((el) => {
-            el.addEventListener("click", () => selectItem(el.dataset.id));
-        });
-    } catch (err) {
-        console.error("Error loading list:", err);
-        listDiv.innerHTML = "Error loading list.";
-    }
+// ---------- Render list from Firestore
+async function loadList() {
+  listEl.textContent = "Loading…";
+  const snap = await getDocs(collection(db, "equipment"));
+  const items = [];
+  snap.forEach(d => {
+    const v = d.data();
+    items.push({
+      id: d.id,
+      name: v.name || "(unnamed)",
+      line: v.line || "?",
+      station: v.station || "?"
+    });
+  });
+  if (!items.length) {
+    listEl.textContent = "No equipment yet.";
+    return;
+  }
+  listEl.innerHTML = items.map(it =>
+    `<div class="item" data-id="${it.id}">
+        <strong>${it.name}</strong>
+        <div class="meta">${it.id} • Line ${it.line} • ${it.station}</div>
+     </div>`
+  ).join("");
+  listEl.querySelectorAll(".item").forEach(el => {
+    el.addEventListener("click", () => showDetail(el.dataset.id));
+  });
 }
 
-// Select an item from the list
-async function selectItem(id) {
-    selectedId = id;
-    const docRef = doc(db, "equipment", id);
-    const docSnap = await getDoc(docRef);
-
-    if (!docSnap.exists()) return;
-
-    const data = docSnap.data();
-    const detailBody = document.getElementById("detailBody");
-    if (detailBody) {
-        detailBody.innerHTML = `
-            <p><strong>ID:</strong> ${id}</p>
-            <p><strong>Name:</strong> ${data.name || ""}</p>
-            <p><strong>Line:</strong> ${data.line || ""}</p>
-            <p><strong>Station:</strong> ${data.station || ""}</p>
-            <p><strong>Make:</strong> ${data.make || ""}</p>
-            <p><strong>Model:</strong> ${data.model || ""}</p>
-            <p><strong>Serial:</strong> ${data.serial || ""}</p>
-            <p><strong>Location:</strong> ${data.location || ""}</p>
-            <p><strong>Notes:</strong> ${data.notes || ""}</p>
-        `;
-    }
+// ---------- Show detail panel
+async function showDetail(id) {
+  const snap = await getDoc(doc(db, "equipment", id));
+  if (!snap.exists()) return;
+  const d = snap.data();
+  selectedId = id;
+  detailBody.innerHTML = `
+    <div><strong>${d.name || "(unnamed)"} </strong></div>
+    <div class="meta">ID: ${id}</div>
+    <div class="meta">Line: ${d.line || ""} • Station: ${d.station || ""}</div>
+    <div class="meta">Make/Model: ${d.make || ""} ${d.model || ""}</div>
+    <div class="meta">Serial: ${d.serial || ""}</div>
+    <div class="meta">Location: ${d.location || ""}</div>
+    ${d.notes ? `<div style="margin-top:8px">${d.notes}</div>` : ""}
+  `;
+  detailEl.style.display = "block";
 }
 
-// Save button
-document.getElementById("btnSave").addEventListener("click", async () => {
-    const id = document.getElementById("f_id").value.trim();
-    if (!id) return alert("ID is required");
+// ---------- Save / update
+$("#btnSave").addEventListener("click", async () => {
+  const id = $("#f_id").value.trim();
+  const name = $("#f_name").value.trim();
+  if (!id || !name) { alert("ID and Name are required."); return; }
 
-    const data = {
-        name: document.getElementById("f_name").value.trim(),
-        line: document.getElementById("f_line").value.trim(),
-        station: document.getElementById("f_station").value.trim(),
-        make: document.getElementById("f_make").value.trim(),
-        model: document.getElementById("f_model").value.trim(),
-        serial: document.getElementById("f_serial").value.trim(),
-        location: document.getElementById("f_location").value.trim(),
-        notes: document.getElementById("f_notes").value.trim(),
-        updated: serverTimestamp()
-    };
+  const payload = {
+    name,
+    line: $("#f_line").value.trim(),
+    station: $("#f_station").value.trim(),
+    make: $("#f_make").value.trim(),
+    model: $("#f_model").value.trim(),
+    serial: $("#f_serial").value.trim(),
+    location: $("#f_location").value.trim(),
+    notes: $("#f_notes").value.trim(),
+    updatedAt: serverTimestamp(),
+  };
 
-    try {
-        await setDoc(doc(db, "equipment", id), data);
-        alert("Saved successfully!");
-        loadEquipmentList();
-    } catch (err) {
-        console.error("Error saving document:", err);
-    }
+  await setDoc(doc(db, "equipment", id), payload, { merge: true });
+  $("#saveMsg").textContent = "Saved ✓";
+  setTimeout(() => $("#saveMsg").textContent = "", 1200);
+  await loadList();
 });
 
-// Clear button
-document.getElementById("btnClear").addEventListener("click", () => {
-    document.getElementById("f_id").value = "";
-    document.getElementById("f_name").value = "";
-    document.getElementById("f_line").value = "";
-    document.getElementById("f_station").value = "";
-    document.getElementById("f_make").value = "";
-    document.getElementById("f_model").value = "";
-    document.getElementById("f_serial").value = "";
-    document.getElementById("f_location").value = "";
-    document.getElementById("f_notes").value = "";
-    selectedId = null;
+// ---------- Clear form
+$("#btnClear").addEventListener("click", () => {
+  ["f_id","f_name","f_line","f_station","f_make","f_model","f_serial","f_location","f_notes"]
+    .forEach(i => { const el = $("#"+i); if (el) el.value = ""; });
 });
 
-// Load into form
-document.getElementById("btnFill").addEventListener("click", async () => {
-    if (!selectedId) return;
-    const docRef = doc(db, "equipment", selectedId);
-    const docSnap = await getDoc(docRef);
-    if (!docSnap.exists()) return;
-
-    const d = docSnap.data();
-    document.getElementById("f_id").value = selectedId;
-    document.getElementById("f_name").value = d.name || "";
-    document.getElementById("f_line").value = d.line || "";
-    document.getElementById("f_station").value = d.station || "";
-    document.getElementById("f_make").value = d.make || "";
-    document.getElementById("f_model").value = d.model || "";
-    document.getElementById("f_serial").value = d.serial || "";
-    document.getElementById("f_location").value = d.location || "";
-    document.getElementById("f_notes").value = d.notes || "";
-    window.scrollTo({ top: 0, behavior: "smooth" });
+// ---------- Load selected into form
+$("#btnFill").addEventListener("click", async () => {
+  if (!selectedId) return;
+  const snap = await getDoc(doc(db, "equipment", selectedId));
+  if (!snap.exists()) return;
+  const d = snap.data();
+  $("#f_id").value = selectedId;
+  $("#f_name").value = d.name || "";
+  $("#f_line").value = d.line || "";
+  $("#f_station").value = d.station || "";
+  $("#f_make").value = d.make || "";
+  $("#f_model").value = d.model || "";
+  $("#f_serial").value = d.serial || "";
+  $("#f_location").value = d.location || "";
+  $("#f_notes").value = d.notes || "";
+  window.scrollTo({ top: 0, behavior: "smooth" });
 });
 
-// Open QR page
+// ---------- Open QR page (GitHub Pages route)
 function slugToPath(id) {
-    if (id.startsWith("l4-")) {
-        return `equipment/line4-${id.slice(3)}.html`;
-    }
-    return `${id}/`;
+  // for now, just /equipment/<id>.html
+  return `equipment/${id}.html`;
 }
-
-document.getElementById("btnToQR").addEventListener("click", () => {
-    if (!selectedId) return;
-    const url = `https://chasemyers.github.io/vytron-app/${slugToPath(selectedId)}`;
-    window.open(url, "_blank");
+$("#btnToQR").addEventListener("click", () => {
+  if (!selectedId) return;
+  const url = `https://chasemyers.github.io/vytron-app/${slugToPath(selectedId)}`;
+  window.open(url, "_blank");
 });
 
-// Initial load
-loadEquipmentList();
+// ---------- Boot
+loadList();
