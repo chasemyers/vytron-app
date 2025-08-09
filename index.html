@@ -1,74 +1,47 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Vytron • Maintenance Pilot</title>
-<style>
-  :root { --bg:#0b0c0f; --fg:#e8eaed; --muted:#9aa0a6; --card:#12141a; --accent:#8ab4f8; }
-  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial}
-  header{padding:16px 20px;border-bottom:1px solid #1e2127}
-  h1{font-size:18px;margin:0}
-  main{max-width:980px;margin:0 auto;padding:18px}
-  .row{display:flex;gap:12px;align-items:center;padding:10px 12px;border:1px solid #1e2127;border-radius:10px;margin:8px 0;text-decoration:none;color:var(--fg)}
-  .row:hover{background:#0f1218}
-  .meta{color:var(--muted);font-size:13px}
-  .grid{display:grid;gap:12px;grid-template-columns:1fr 1fr} @media(max-width:720px){.grid{grid-template-columns:1fr}}
-  .card{background:var(--card);border:1px solid #1e2127;border-radius:12px;padding:14px;margin:12px 0}
-  label{font-size:13px;color:var(--muted)} input,textarea,select{width:100%;padding:10px;border:1px solid #2a2f39;border-radius:10px;background:#0f1117;color:var(--fg)}
-  button{background:transparent;border:1px solid #2f3642;color:var(--fg);padding:10px 14px;border-radius:10px;cursor:pointer}
-  button.primary{border-color:var(--accent);color:var(--accent)}
-  .right{display:flex;gap:8px;justify-content:flex-end}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maintenance App</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header><h1>Vytron • Maintenance Pilot</h1></header>
-<main>
 
-  <!-- ADD / EDIT -->
-  <div class="card">
-    <h3 style="margin:0 0 8px">Add / Edit Equipment</h3>
-    <div class="grid">
-      <div><label>ID (slug) *</label><input id="f_id" placeholder="l4-extruder" /></div>
-      <div><label>Name *</label><input id="f_name" placeholder="Extruder" /></div>
-      <div><label>Line</label><input id="f_line" placeholder="4" /></div>
-      <div><label>Station</label><input id="f_station" placeholder="Extruder / Puller / Winder…" /></div>
-      <div><label>Make</label><input id="f_make" placeholder="NRM" /></div>
-      <div><label>Model</label><input id="f_model" placeholder="Pacemaker III" /></div>
-      <div><label>Serial</label><input id="f_serial" placeholder="14419" /></div>
-      <div><label>Location</label><input id="f_location" placeholder="Line 4" /></div>
-      <div style="grid-column:1/-1"><label>Notes</label><textarea id="f_notes" rows="2" placeholder="Short note…"></textarea></div>
-    </div>
-    <div class="right">
-      <button id="btnClear">Clear</button>
-      <button id="btnSave" class="primary">Save</button>
-    </div>
-    <div id="saveMsg" class="meta" style="margin-top:8px"></div>
-  </div>
+    <h1>Maintenance App</h1>
 
-  <!-- LIST -->
-  <div class="card">
-    <h3 style="margin:0 0 8px">Equipment (live)</h3>
-    <div id="list">Loading…</div>
-    <div id="list"></div>
-<!-- Paste details panel here -->
-<div id="detailsPanel"> ... </div>
+    <!-- Add/Edit Equipment -->
+    <section id="addEditSection">
+        <h2>Add / Edit Equipment</h2>
+        <form id="equipmentForm">
+            <input type="text" id="id" placeholder="Equipment ID" required>
+            <input type="text" id="name" placeholder="Name" required>
+            <input type="text" id="category" placeholder="Category" required>
+            <input type="text" id="location" placeholder="Location" required>
+            <input type="number" id="year" placeholder="Year">
+            <input type="text" id="serial" placeholder="Serial Number">
+            <textarea id="notes" placeholder="Notes"></textarea>
+            <button type="submit">Save</button>
+        </form>
+    </section>
 
-  </div>
+    <!-- Equipment (Live) List -->
+    <section id="liveSection">
+        <h2>Equipment (Live)</h2>
+        <div id="list"></div>
 
-  <!-- DETAIL -->
-  <div class="card" id="detail" style="display:none">
-    <h3 style="margin:0 0 8px">Selected</h3>
-    <div id="detailBody" class="meta">Tap an item above.</div>
-    <div class="right" style="margin-top:8px">
-      <button id="btnToQR">Open QR Page</button>
-      <button id="btnFill">Load into form</button>
-    </div>
-  </div>
+        <!-- Equipment Details Panel -->
+        <div id="detailsPanel" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+            <h3>Equipment Details</h3>
+            <div id="detailBody">
+                <p>Select an item from the list to see details here.</p>
+            </div>
+        </div>
+    </section>
 
-</main>
-
-<!-- App -->
-<script type="module" src="./app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
