@@ -3,137 +3,18 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="./style.css?v=2">
-<!-- Tiny inline favicon to stop the 404 -->
-<link rel="icon" href="data:,">
-  <title>PM Tasks • Vytron Maintenance</title>
-  <link rel="icon" href="data:;base64,iVBORw0KGgo=">
-  <style>
-    :root{--bg:#0f1116;--card:#171923;--text:#e9eef5;--muted:#9aa4b2;--accent:#2b90ff;--line:#242938}
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial}
-    header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line)}
-    header a{color:#fff;text-decoration:none;padding:6px 10px;border-radius:8px;background:#2a2c33}
-    main{max-width:900px;margin:0 auto;padding:16px}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin:12px 0}
-    .meta{color:var(--muted);font-size:.9rem}
-    .row{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
-    .chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.8rem;margin-left:6px}
-    .overdue{background:#b02020;color:#fff}
-    .dueSoon{background:#b36b00;color:#fff}
-    .ok{background:#2f7d32;color:#fff}
-    button{padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:#1b2230;color:#fff;cursor:pointer}
-  </style>
+  <title>PM Tasks • Vytron</title>
+
+  <link rel="stylesheet" href="./style.css?v=3" />
+  <link rel="icon" href="data:,">
 </head>
 <body>
-  <header>
-    <div>PM Tasks • Vytron</div>
-    <nav style="display:flex;gap:10px">
-      <a href="./">Home</a>
-      <a href="./inventory.html">Inventory</a>
-    </nav>
-  </header>
+  <a class="back" href="./index.html">← Back</a>
+  <h1>PM Tasks • Vytron</h1>
+  <p class="meta">Tap <b>Done</b> after weekly bag filter changes or the daily water check (≥3 lines per side).</p>
 
-  <main>
-    <div class="meta" style="margin:4px 0 12px">
-      Tap <b>Done</b> after weekly bag filter changes or the daily water check (≥3 lines per side).
-    </div>
-    <div id="list">Loading…</div>
-  </main>
+  <div id="pmList" class="card">Loading…</div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-    import {
-      getFirestore, collection, getDocs, doc, updateDoc, Timestamp
-    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-
-    // Firebase project (yours)
-    const firebaseConfig = {
-      apiKey: "AIzaSyAYA7OzOQBpyHsOYIDK89Z4-8BbrRleZ7A",
-      authDomain: "vytron-maintenance-app.firebaseapp.com",
-      projectId: "vytron-maintenance-app",
-      storageBucket: "vytron-maintenance-app.firebasestorage.app",
-      messagingSenderId: "951172681125",
-      appId: "1:951172681125:web:278450c515a89547f32c4c"
-    };
-    const app = initializeApp(firebaseConfig);
-    const db  = getFirestore(app);
-
-    const list = document.getElementById('list');
-
-    function daysBetween(a,b){ return Math.floor((b - a) / 86400000); }
-    function toDate(v){
-      if (!v) return null;
-      return v.toDate ? v.toDate() : new Date(v);
-    }
-    function badge(nextDate){
-      if (!nextDate) return '';
-      const d = daysBetween(new Date(), nextDate);
-      if (d < 0)  return `<span class="chip overdue">Overdue ${-d}d</span>`;
-      if (d <= 3) return `<span class="chip dueSoon">Due in ${d}d</span>`;
-      return `<span class="chip ok">OK</span>`;
-    }
-
-    async function load(){
-      try {
-        const snap = await getDocs(collection(db, "pmTasks"));
-        const tasks = [];
-        snap.forEach(x => tasks.push({ id:x.id, ...x.data() }));
-        tasks.sort((a,b)=> (a.title||a.id).localeCompare(b.title||b.id));
-
-        list.innerHTML = tasks.map(t=>{
-          const last = toDate(t.lastDone);
-          const next = toDate(t.nextDue);
-          return `
-            <div class="card" data-id="${t.id}" data-interval="${t.intervalDays||7}">
-              <div class="row">
-                <div>
-                  <div><strong>${t.title || t.id}</strong> ${badge(next)}</div>
-                  <div class="meta">
-                    Interval: ${t.intervalDays||'?'}d • Applies: ${(t.appliesTo||[]).join(', ')||'—'}
-                  </div>
-                  <div class="meta">
-                    Last: ${last? last.toLocaleDateString() : '—'} •
-                    Next: ${next? next.toLocaleDateString() : '—'}
-                  </div>
-                  ${t.notes ? `<div class="meta" style="margin-top:6px">${t.notes}</div>` : ``}
-                  ${Array.isArray(t.steps) && t.steps.length ? `
-                    <ol class="meta" style="margin-top:6px">
-                      ${t.steps.map(s=>`<li>${s}</li>`).join('')}
-                    </ol>` : ``}
-                </div>
-                <div><button data-act="done">Done</button></div>
-              </div>
-            </div>`;
-        }).join('');
-      } catch (e) {
-        list.innerHTML = `<div style="color:#ff6b6b">Error: ${e.message}</div>`;
-      }
-    }
-
-    list.addEventListener('click', async (e)=>{
-      const btn = e.target.closest('button[data-act="done"]');
-      if (!btn) return;
-      const card = btn.closest('.card');
-      const id = card.dataset.id;
-      const interval = parseInt(card.dataset.interval || '7', 10);
-
-      const now  = new Date();
-      const next = new Date(now.getTime() + interval * 86400000);
-
-      try {
-        await updateDoc(doc(db, "pmTasks", id), {
-          lastDone: Timestamp.fromDate(now),
-          nextDue:  Timestamp.fromDate(next)
-        });
-        load(); // refresh UI
-      } catch (e) {
-        alert('Could not update task. Check rules/connection.');
-        console.error(e);
-      }
-    });
-
-    load();
-  </script>
+  <script type="module" src="./pm.js?v=4"></script>
 </body>
 </html>
