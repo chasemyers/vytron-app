@@ -28,77 +28,57 @@
   <div id="list">Loading…</div>
 
   <script type="module">
-    // Firebase (CDN)
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-    import { getFirestore, collection, getDocs, doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+  import { db } from './firebase.js';
+  import {
+    collection, doc, onSnapshot, updateDoc, increment
+  } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyAYA7OzOQBpyHsOYIDK89Z4-8BbrRleZ7A",
-      authDomain: "vytron-maintenance-app.firebaseapp.com",
-      projectId: "vytron-maintenance-app",
-      storageBucket: "vytron-maintenance-app.firebasestorage.app",
-      messagingSenderId: "951172681125",
-      appId: "1:951172681125:web:278450c515a89547f32c4c",
-      measurementId: "G-FEKBB1K6V7"
-    };
+  const list = document.querySelector('#list');
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+  // Basic styles for low-stock
+  const style = document.createElement('style');
+  style.textContent = `
+    .item { display:flex; align-items:center; gap:12px; margin:10px 0; }
+    .name { font-weight:600; }
+    .qty  { min-width:3ch; text-align:center; display:inline-block; }
+    .meta { opacity:.7; font-size:.9em; }
+    .low  { color:#b00020; font-weight:700; } /* red when qty < min */
+    button { padding:2px 8px; }
+  `;
+  document.head.appendChild(style);
 
-    const $list = document.getElementById('list');
+  // Live subscribe so the list updates as you tap +/-
+  onSnapshot(collection(db, 'inventory'), (snap) => {
+    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+                           .sort((a,b) => a.name.localeCompare(b.name));
+    list.innerHTML = '';
+    items.forEach(renderItem);
+  });
 
-    async function load() {
-      const snap = await getDocs(collection(db, "inventory"));
-      const items = [];
-      snap.forEach(d => items.push({ id:d.id, ...d.data() }));
-      items.sort((a,b)=> (a.name||a.id).localeCompare(b.name||b.id));
+  function renderItem(item) {
+    const el = document.createElement('div');
+    el.className = 'item';
 
-      $list.innerHTML = items.map(it => {
-        const belowMin = typeof it.minimum === 'number' && typeof it.quantity === 'number' && it.quantity < it.minimum;
-        return `
-          <div class="card" data-id="${it.id}">
-            <div class="row">
-              <div>
-                <div><strong>${it.name||it.id}</strong> <span class="meta">(${it.id})</span></div>
-                <div class="meta">${it.manufacturer||''} ${it.model||''}</div>
-                <div class="meta">Min: ${it.minimum ?? '-'} • Loc: ${it.location||'-'}</div>
-              </div>
-              <div class="row">
-                <button class="ghost" data-act="dec">–</button>
-                <div class="qty ${belowMin?'danger':''}">${it.quantity ?? 0}</div>
-                <button class="ok" data-act="inc">+</button>
-              </div>
-            </div>
-          </div>`;
-      }).join('');
-    }
+    const low = Number(item.quantity ?? 0) < Number(item.minQty ?? 0);
 
-    $list.addEventListener('click', async (e)=>{
-      const btn = e.target.closest('button');
-      if (!btn) return;
-      const card = btn.closest('.card');
-      const id = card.dataset.id;
-      const act = btn.dataset.act;
-      const ref = doc(db, "inventory", id);
+    el.innerHTML = `
+      <span class="name ${low ? 'low':''}">${item.name || item.partNumber || item.id}</span>
+      <span class="meta">(${item.partNumber || ''})</span>
+      <button class="dec">-</button>
+      <span class="qty ${low ? 'low':''}">${item.quantity ?? 0}</span>
+      <button class="inc">+</button>
+      <span class="meta">Min: ${item.minQty ?? 0}</span>
+    `;
 
-      try {
-        await updateDoc(ref, { quantity: increment(act==='inc' ? 1 : -1) });
-        // Optimistic UI: update the number on screen
-        const qtyEl = card.querySelector('.qty');
-        const newVal = (parseInt(qtyEl.textContent||'0',10) + (act==='inc'?1:-1));
-        qtyEl.textContent = newVal;
-        // flag if under min
-        const minText = card.querySelector('.meta').textContent;
-        const m = /Min:\s(\d+)/.exec(minText);
-        const min = m ? parseInt(m[1],10) : null;
-        qtyEl.classList.toggle('danger', min!=null && newVal < min);
-      } catch(err){
-        alert('Update failed. Check permissions or network.');
-        console.error(err);
-      }
-    });
+    el.querySelector('.inc').addEventListener('click', () => bump(item.id, +1));
+    el.querySelector('.dec').addEventListener('click', () => bump(item.id, -1));
+    list.appendChild(el);
+  }
 
-    load();
-  </script>
+  async function bump(id, delta) {
+    const ref = doc(db, 'inventory', id);
+    await updateDoc(ref, { quantity: increment(delta) });
+  }
+</script>
 </body>
 </html>
