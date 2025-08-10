@@ -1,0 +1,104 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Inventory</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; padding:16px; }
+    header a { text-decoration:none; }
+    .card { background:#1e1f24; color:#fff; padding:12px; border-radius:10px; margin:10px 0; }
+    .row { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+    .meta { opacity:.8; font-size:.9rem; }
+    button { padding:6px 10px; border-radius:8px; border:none; cursor:pointer; }
+    .qty { min-width:3rem; text-align:center; font-weight:700; }
+    .danger { background:#b02020; color:#fff; }
+    .ok { background:#2f7d32; color:#fff; }
+    .ghost { background:#2a2c33; color:#fff; }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="./">← Back</a>
+    <h2>Inventory</h2>
+    <div class="meta">Tap +/– to adjust quantity. Items below minimum show red.</div>
+  </header>
+
+  <div id="list">Loading…</div>
+
+  <script type="module">
+    // Firebase (CDN)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import { getFirestore, collection, getDocs, doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAYA7OzOQBpyHsOYIDK89Z4-8BbrRleZ7A",
+      authDomain: "vytron-maintenance-app.firebaseapp.com",
+      projectId: "vytron-maintenance-app",
+      storageBucket: "vytron-maintenance-app.firebasestorage.app",
+      messagingSenderId: "951172681125",
+      appId: "1:951172681125:web:278450c515a89547f32c4c",
+      measurementId: "G-FEKBB1K6V7"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const $list = document.getElementById('list');
+
+    async function load() {
+      const snap = await getDocs(collection(db, "inventory"));
+      const items = [];
+      snap.forEach(d => items.push({ id:d.id, ...d.data() }));
+      items.sort((a,b)=> (a.name||a.id).localeCompare(b.name||b.id));
+
+      $list.innerHTML = items.map(it => {
+        const belowMin = typeof it.minimum === 'number' && typeof it.quantity === 'number' && it.quantity < it.minimum;
+        return `
+          <div class="card" data-id="${it.id}">
+            <div class="row">
+              <div>
+                <div><strong>${it.name||it.id}</strong> <span class="meta">(${it.id})</span></div>
+                <div class="meta">${it.manufacturer||''} ${it.model||''}</div>
+                <div class="meta">Min: ${it.minimum ?? '-'} • Loc: ${it.location||'-'}</div>
+              </div>
+              <div class="row">
+                <button class="ghost" data-act="dec">–</button>
+                <div class="qty ${belowMin?'danger':''}">${it.quantity ?? 0}</div>
+                <button class="ok" data-act="inc">+</button>
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    $list.addEventListener('click', async (e)=>{
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const card = btn.closest('.card');
+      const id = card.dataset.id;
+      const act = btn.dataset.act;
+      const ref = doc(db, "inventory", id);
+
+      try {
+        await updateDoc(ref, { quantity: increment(act==='inc' ? 1 : -1) });
+        // Optimistic UI: update the number on screen
+        const qtyEl = card.querySelector('.qty');
+        const newVal = (parseInt(qtyEl.textContent||'0',10) + (act==='inc'?1:-1));
+        qtyEl.textContent = newVal;
+        // flag if under min
+        const minText = card.querySelector('.meta').textContent;
+        const m = /Min:\s(\d+)/.exec(minText);
+        const min = m ? parseInt(m[1],10) : null;
+        qtyEl.classList.toggle('danger', min!=null && newVal < min);
+      } catch(err){
+        alert('Update failed. Check permissions or network.');
+        console.error(err);
+      }
+    });
+
+    load();
+  </script>
+</body>
+</html>
