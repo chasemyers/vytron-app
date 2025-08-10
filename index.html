@@ -2,72 +2,193 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Vytron • Maintenance Pilot</title>
+  <!-- Silences the favicon 404 -->
+  <link rel="icon" href="data:;base64,iVBORw0KGgo=">
   <style>
-    :root { color-scheme: dark; font: 14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-    body { margin: 0; padding: 20px; background: #111; color: #eaeaea; }
-    h1 { margin: 0 0 16px; font-size: 18px; }
-    .grid { display:grid; grid-template-columns: 1fr 1fr; gap:10px 16px; }
-    label { display:block; font-size:12px; opacity:.7; margin-bottom:4px; }
-    input, textarea, button { width:100%; padding:10px; border-radius:8px; border:1px solid #2a2a2a; background:#161616; color:#eaeaea; }
-    textarea { min-height:70px; resize:vertical; }
-    .row { display:flex; gap:10px; }
-    .card { background:#0f0f0f; border:1px solid #1f1f1f; border-radius:12px; padding:16px; margin:14px 0; }
-    .item { padding:10px 12px; border:1px solid #222; border-radius:8px; margin:8px 0; cursor:pointer; }
-    .item:hover { background:#1a1a1a; }
-    .right { text-align:right; }
-    .meta { opacity:.7; font-size:12px; }
-    .primary { background:#2b6fff; border-color:#2b6fff; }
-    .danger  { background:#a22; border-color:#a22; }
+    :root { --bg:#0f1116; --card:#171923; --text:#e9eef5; --muted:#9aa4b2; --accent:#2b90ff; --line:#242938; }
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial}
+    header{padding:16px 18px;border-bottom:1px solid var(--line);font-weight:700}
+    main{max-width:980px;margin:0 auto;padding:16px}
+    h3{margin:0 0 8px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px;margin:12px 0}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+    .grid label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+    input, textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:#10131a;color:var(--text)}
+    textarea{min-height:56px;resize:vertical}
+    .right{display:flex;gap:8px;justify-content:flex-end}
+    button{padding:8px 12px;border:1px solid var(--line);background:#111521;color:var(--text);border-radius:6px;cursor:pointer}
+    .primary{background:var(--accent);border-color:#1f6dd2;color:white}
+    .meta{color:var(--muted);font-size:12px}
+    #list{display:flex;flex-wrap:wrap;gap:8px}
+    .pill{border:1px solid var(--line);background:#10131a;color:var(--text);padding:8px 10px;border-radius:999px;cursor:pointer}
+    .pill:hover{border-color:var(--accent)}
+    .kv{margin:2px 0} .kv b{color:#bcd0ea}
+    a.link{color:var(--accent);text-decoration:none}
   </style>
 </head>
 <body>
-  <h1>Vytron • Maintenance Pilot</h1>
-
-  <!-- ADD / EDIT -->
-  <div class="card">
-<h2 id="form-section">Add / Edit Equipment</h2>
-    <div class="grid">
-      <div><label>ID (slug) *</label><input id="f_id" placeholder="l4-extruder" /></div>
-      <div><label>Name *</label><input id="f_name" placeholder="Extruder" /></div>
-      <div><label>Line</label><input id="f_line" placeholder="4" /></div>
-      <div><label>Station</label><input id="f_station" placeholder="Extruder / Puller / Winder…" /></div>
-      <div><label>Make</label><input id="f_make" placeholder="NRM" /></div>
-      <div><label>Model</label><input id="f_model" placeholder="Pacemaker III" /></div>
-      <div><label>Serial</label><input id="f_serial" placeholder="14419" /></div>
-      <div><label>Location</label><input id="f_location" placeholder="Line 4" /></div>
-      <div class="row" style="grid-column:1/-1;">
-        <div style="flex:1">
-          <label>Notes</label>
-          <textarea id="f_notes" placeholder="Short note…"></textarea>
+  <header>Vytron • Maintenance Pilot</header>
+  <main>
+    <!-- ADD / EDIT -->
+    <div class="card" id="form">
+      <h3 style="margin:0 0 8px">Add / Edit Equipment</h3>
+      <div class="grid">
+        <div><label>ID (slug) *</label><input id="f_id" placeholder="l4-extruder" /></div>
+        <div><label>Name *</label><input id="f_name" placeholder="Extruder" /></div>
+        <div><label>Line</label><input id="f_line" placeholder="4" /></div>
+        <div><label>Station</label><input id="f_station" placeholder="Extruder / Puller / Winder…" /></div>
+        <div><label>Make</label><input id="f_make" placeholder="NRM" /></div>
+        <div><label>Model</label><input id="f_model" placeholder="Pacemaker III" /></div>
+        <div><label>Serial</label><input id="f_serial" placeholder="14419" /></div>
+        <div><label>Location</label><input id="f_location" placeholder="Line 4 – Station B" /></div>
+        <div class="grid" style="grid-column:1/-1">
+          <div style="grid-column:1/-1"><label>Notes</label><textarea id="f_notes" placeholder="Short note…"></textarea></div>
         </div>
       </div>
+      <div class="right">
+        <button id="btnClear">Clear</button>
+        <button id="btnSave" class="primary">Save</button>
+      </div>
+      <div id="saveMsg" class="meta" style="margin-top:8px"></div>
     </div>
-    <div class="right">
-      <button id="btnClear">Clear</button>
-      <button id="btnSave" class="primary">Save</button>
+
+    <!-- LIST -->
+    <div class="card">
+      <h3 style="margin:0 0 8px">Equipment (live)</h3>
+      <div id="list">Loading…</div>
     </div>
-    <div id="saveMsg" class="meta" style="margin-top:8px"></div>
-  </div>
 
-  <!-- LIST -->
-  <div class="card">
-    <h3>Equipment (live)</h3>
-    <div id="list">Loading…</div>
-  </div>
-
-  <!-- DETAIL -->
-  <div class="card" id="detail" style="display:none;">
-    <h3>Selected</h3>
-    <div id="detailBody" class="meta">Tap an item above.</div>
-    <div class="right" style="margin-top:8px">
-      <button id="btnToQR">Open QR Page</button>
-      <button id="btnFill">Load into form</button>
+    <!-- DETAIL -->
+    <div class="card" id="detail" style="display:none">
+      <h3 style="margin:0 0 8px">Selected</h3>
+      <div id="detailBody" class="meta">Tap an item above.</div>
+      <div class="right" style="margin-top:8px">
+        <button id="btnToQR">Open QR Page</button>
+        <button id="btnFill">Load into form</button>
+      </div>
     </div>
-  </div>
+  </main>
 
-  <!-- The ONLY script tag belongs here -->
-  <script type="module" src="./app.js"></script>
+  <!-- Single inline module: nothing else to link/404 -->
+  <script type="module">
+    // Firebase (CDN)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import {
+      getFirestore, doc, getDoc, setDoc,
+      collection, onSnapshot, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    // Your project
+    const firebaseConfig = {
+      apiKey: "AIzaSyAYA7OzOQBpyHsOYIDK89Z4-8BbrRleZ7A",
+      authDomain: "vytron-maintenance-app.firebaseapp.com",
+      projectId: "vytron-maintenance-app",
+      storageBucket: "vytron-maintenance-app.firebasestorage.app",
+      messagingSenderId: "951172681125",
+      appId: "1:951172681125:web:278450c515a89547f32c4c"
+    };
+
+    // Init
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+
+    // --- Helpers
+    const $ = s => document.querySelector(s);
+    const $$ = s => document.querySelectorAll(s);
+    const byId = id => document.getElementById(id);
+    const fields = ["id","name","line","station","make","model","serial","location","notes"];
+    const input = k => byId("f_"+k);
+    const getForm = () => Object.fromEntries(fields.map(k=>[k, (input(k)?.value||"").trim()]));
+    const setForm = (d={}) => fields.forEach(k => { if(input(k)) input(k).value = d[k] || ""; });
+    const slugify = s => (s||"").toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+
+    let selectedId = "";
+
+    // --- Live list
+    const listEl = byId("list");
+    onSnapshot(collection(db,"equipment"), snap => {
+      const items = [];
+      snap.forEach(doc => {
+        const d = doc.data() || {};
+        items.push({ id: doc.id, name: d.name||"(unnamed)", line: d.line||"?" });
+      });
+      if (!items.length) { listEl.textContent = "No equipment yet."; return; }
+      listEl.innerHTML = "";
+      items.sort((a,b)=>a.name.localeCompare(b.name)).forEach(it=>{
+        const btn = document.createElement("button");
+        btn.className = "pill";
+        btn.textContent = `${it.name} • Line ${it.line} • ${it.id}`;
+        btn.onclick = () => selectItem(it.id);
+        listEl.appendChild(btn);
+      });
+    });
+
+    // --- Select item -> show detail
+    async function selectItem(id){
+      selectedId = id;
+      const ref = doc(db,"equipment",id);
+      const snap = await getDoc(ref);
+      const d = snap.exists() ? snap.data() : {};
+      const body = byId("detailBody");
+      byId("detail").style.display = "block";
+      body.innerHTML = `
+        <div class="kv"><b>Name:</b> ${d.name||"(unnamed)"} • <b>ID:</b> ${id}</div>
+        <div class="kv"><b>Line:</b> ${d.line||""} • <b>Station:</b> ${d.station||""}</div>
+        <div class="kv"><b>Make/Model:</b> ${d.make||""} ${d.model||""}</div>
+        <div class="kv"><b>Serial:</b> ${d.serial||""}</div>
+        <div class="kv"><b>Location:</b> ${d.location||""}</div>
+        ${d.notes ? `<div class="kv"><b>Notes:</b> ${d.notes}</div>` : ``}
+      `;
+      window.scrollTo({top:document.body.scrollHeight, behavior:"smooth"});
+    }
+
+    // --- Buttons
+    byId("btnFill").onclick = async () => {
+      if (!selectedId) return;
+      const snap = await getDoc(doc(db,"equipment",selectedId));
+      if (snap.exists()){
+        const d = snap.data();
+        setForm({ id:selectedId, ...d });
+        document.getElementById("form").scrollIntoView({behavior:"smooth"});
+      }
+    };
+
+    byId("btnToQR").onclick = () => {
+      if (!selectedId) return;
+      const url = `./equip.html?id=${encodeURIComponent(selectedId)}`;
+      window.open(url,"_blank");
+    };
+
+    byId("btnClear").onclick = () => setForm({});
+
+    byId("btnSave").onclick = async () => {
+      let d = getForm();
+      let id = d.id || slugify(d.name);
+      if (!id){ alert("ID or Name is required."); return; }
+
+      // normalize
+      d.id = undefined; // stored in doc id
+      d.updatedAt = serverTimestamp();
+
+      await setDoc(doc(db,"equipment",id), d, {merge:true});
+      selectedId = id;
+      byId("saveMsg").textContent = `Saved ${id} ✓`;
+      setTimeout(()=>byId("saveMsg").textContent="", 2000);
+    };
+
+    // --- Deep-link edit: index.html?edit=<id>
+    const params = new URLSearchParams(location.search);
+    const editId = params.get("edit");
+    if (editId){
+      getDoc(doc(db,"equipment",editId)).then(s=>{
+        if (s.exists()) {
+          setForm({ id:editId, ...s.data() });
+          document.getElementById("form").scrollIntoView({behavior:"smooth"});
+        }
+      });
+    }
+  </script>
 </body>
 </html>
