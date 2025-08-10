@@ -1,0 +1,47 @@
+/* --------- Base --------- */
+:root{
+  --bg:#0f1116; --card:#171923; --line:#242938;
+  --text:#e9eef5; --muted:#9aa4b2; --link:#2b90ff;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial;
+}
+
+/* --------- Layout --------- */
+header{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px; padding:12px 16px; border-bottom:1px solid var(--line);
+}
+header a{color:#fff; text-decoration:none; padding:6px 10px; border-radius:8px; background:#2a2c33}
+main{max-width:900px; margin:0 auto; padding:16px}
+.card{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; margin:12px 0}
+.meta{color:var(--muted); font-size:.9rem}
+
+/* --------- Buttons --------- */
+button{
+  padding:6px 10px; border-radius:8px; border:1px solid var(--line);
+  background:#1b2230; color:#fff; cursor:pointer;
+}
+button:disabled{opacity:.6; cursor:not-allowed}
+
+/* --------- Inventory list --------- */
+.list{display:flex; flex-direction:column; gap:8px}
+.item{display:flex; align-items:center; gap:10px}
+.item .name{min-width:260px; font-weight:600}
+.item .sku{color:var(--muted); margin-left:6px}
+.item .qty{min-width:34px; text-align:center; font-variant-numeric:tabular-nums}
+.item .min{color:var(--muted); margin-left:8px}
+.item.low .name{color:#ff6b6b}
+.item.low .qty{color:#ff6b6b; font-weight:700}
+
+/* --------- PM badges --------- */
+.chip{display:inline-block; padding:2px 8px; border-radius:999px; font-size:.8rem; margin-left:6px}
+.overdue{background:#b02020; color:#fff}
+.dueSoon{background:#b36b00; color:#fff}
+.ok{background:#2f7d32; color:#fff}
+
+/* Links on light backgrounds inside cards */
+a{color:var(--link)}
