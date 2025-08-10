@@ -47,6 +47,17 @@
           <div class="meta">Location: ${d.location || ""}</div>
           ${d.notes ? `<p style="margin-top:12px">${d.notes}</p>` : ""}
           <a class="btn" href="./">Back to list</a>
+          <button id="btnEdit" class="btn">Edit</button>
+<script type="module">
+  // Send user back to the admin page with this item pre-loaded
+  const params = new URLSearchParams(location.search);
+  const id = params.get("id");            // e.g. l4-extruder
+  const root = location.pathname.split("/equipment/")[0]; // "/vytron-app"
+  document.getElementById("btnEdit").addEventListener("click", () => {
+    location.href = `${root}/?edit=${encodeURIComponent(id)}#form`;
+  });
+</script>
+
         `;
       }
     }
