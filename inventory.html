@@ -27,57 +27,68 @@
 
   <div id="list">Loading…</div>
 
-  <script type="module">
-  import { db } from './firebase.js';
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
   import {
-    collection, doc, onSnapshot, updateDoc, increment
-  } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+    getFirestore, collection, doc, onSnapshot, updateDoc, increment
+  } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+  // Firebase (your project)
+  const firebaseConfig = {
+    apiKey: "AIzaSyAYA7OzOQBpyHsOYIDK89Z4-8BbrRleZ7A",
+    authDomain: "vytron-maintenance-app.firebaseapp.com",
+    projectId: "vytron-maintenance-app",
+    storageBucket: "vytron-maintenance-app.firebasestorage.app",
+    messagingSenderId: "951172681125",
+    appId: "1:951172681125:web:278450c515a89547f32c4c"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
 
   const list = document.querySelector('#list');
-
-  // Basic styles for low-stock
   const style = document.createElement('style');
   style.textContent = `
     .item { display:flex; align-items:center; gap:12px; margin:10px 0; }
     .name { font-weight:600; }
     .qty  { min-width:3ch; text-align:center; display:inline-block; }
     .meta { opacity:.7; font-size:.9em; }
-    .low  { color:#b00020; font-weight:700; } /* red when qty < min */
+    .low  { color:#b00020; font-weight:700; }
     button { padding:2px 8px; }
   `;
   document.head.appendChild(style);
 
-  // Live subscribe so the list updates as you tap +/-
-  onSnapshot(collection(db, 'inventory'), (snap) => {
-    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-                           .sort((a,b) => a.name.localeCompare(b.name));
-    list.innerHTML = '';
-    items.forEach(renderItem);
-  });
+  onSnapshot(
+    collection(db, 'inventory'),
+    (snap) => {
+      const items = snap.docs.map(d => ({ id:d.id, ...d.data() }))
+        .sort((a,b) => (a.name||a.id).localeCompare(b.name||b.id));
 
-  function renderItem(item) {
-    const el = document.createElement('div');
-    el.className = 'item';
+      list.innerHTML = '';
+      items.forEach(it => {
+        const qty = Number(it.qty ?? 0);
+        const min = Number(it.minQty ?? 0);
+        const low = qty < min;
 
-    const low = Number(item.quantity ?? 0) < Number(item.minQty ?? 0);
-
-    el.innerHTML = `
-      <span class="name ${low ? 'low':''}">${item.name || item.partNumber || item.id}</span>
-      <span class="meta">(${item.partNumber || ''})</span>
-      <button class="dec">-</button>
-      <span class="qty ${low ? 'low':''}">${item.quantity ?? 0}</span>
-      <button class="inc">+</button>
-      <span class="meta">Min: ${item.minQty ?? 0}</span>
-    `;
-
-    el.querySelector('.inc').addEventListener('click', () => bump(item.id, +1));
-    el.querySelector('.dec').addEventListener('click', () => bump(item.id, -1));
-    list.appendChild(el);
-  }
+        const el = document.createElement('div');
+        el.className = 'item';
+        el.innerHTML = `
+          <span class="name ${low?'low':''}">${it.name || it.partNumber || it.id}</span>
+          <span class="meta">(${it.partNumber || ''})</span>
+          <button class="dec">-</button>
+          <span class="qty ${low?'low':''}">${qty}</span>
+          <button class="inc">+</button>
+          <span class="meta">Min: ${min}</span>
+        `;
+        el.querySelector('.inc').addEventListener('click', () => bump(it.id, +1));
+        el.querySelector('.dec').addEventListener('click', () => bump(it.id, -1));
+        list.appendChild(el);
+      });
+    },
+    (err) => { list.innerHTML = `<div style="color:#ff6b6b">Error: ${err.message}</div>`; }
+  );
 
   async function bump(id, delta) {
-    const ref = doc(db, 'inventory', id);
-    await updateDoc(ref, { quantity: increment(delta) });
+    await updateDoc(doc(db,'inventory',id), { qty: increment(delta) });
   }
 </script>
 </body>
