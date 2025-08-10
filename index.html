@@ -1,24 +1,26 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <script>const appVersion='v=3';</script>
+  <!-- version bump: change to v=4, v=5... whenever you deploy -->
+  <script>const appVersion='v=4';</script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Vytron • Maintenance Pilot</title>
 
   <!-- PWA + icon -->
-  <link rel="manifest" href="./manifest.webmanifest?{{appVersion}}">
+  <link rel="manifest" href="./manifest.webmanifest">
   <meta name="theme-color" content="#0f1116">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="apple-touch-icon" href="./icons/icon-192.png?{{appVersion}}">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <link rel="icon" href="data:;base64,=">
 
-  <!-- Style -->
-  <link rel="stylesheet" href="./style.css?v=3">
+  <!-- Shared styles -->
+  <link rel="stylesheet" href="./style.css?v=4" />
   <style>
     :root { --bg:#0f1116; --card:#171923; --text:#e9eef5; --muted:#9aa4b2; --accent:#2b90ff; --line:#242938 }
-    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
     header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line)}
     main{max-width:980px;margin:0 auto;padding:16px}
     h3{margin:0 0 8px}
@@ -27,9 +29,10 @@
     .grid label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
     input, textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:#10131a;color:var(--text)}
     textarea{min-height:56px;resize:vertical}
-    .right{display:flex;gap:8px;justify-content:flex-end}
+    .right{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
     button{padding:8px 12px;border:1px solid var(--line);background:#111521;color:var(--text);border-radius:6px;cursor:pointer}
     .primary{background:var(--accent);border-color:#1f6dd2;color:white}
+    .danger{background:#b02020;border-color:#7f1818;color:#fff}
     .meta{color:var(--muted);font-size:12px}
     #list{display:flex;flex-wrap:wrap;gap:8px}
     .pill{border:1px solid var(--line);background:#10131a;color:var(--text);padding:8px 10px;border-radius:999px;cursor:pointer}
@@ -40,9 +43,12 @@
     .tile{display:block;background:#1e1f24;color:#fff;padding:16px;border-radius:12px;text-decoration:none}
   </style>
 
+  <!-- Register service worker (keeps PWA updated) -->
   <script>
     if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js?"+appVersion).catch(()=>{}));
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js?"+appVersion).catch(()=>{});
+      });
     }
   </script>
 </head>
@@ -96,14 +102,19 @@
       <div class="right" style="margin-top:8px">
         <button id="btnToQR">Open QR Page</button>
         <button id="btnFill">Load into form</button>
+        <button id="btnDelete" class="danger">Delete</button>
       </div>
     </div>
   </main>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-    import { getFirestore, doc, getDoc, setDoc, collection, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+    import {
+      getFirestore, doc, getDoc, setDoc, deleteDoc,
+      collection, onSnapshot, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
+    // Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyAYA7OzOQBpyHsOYIDK89Z4-8BbrRleZ7A",
       authDomain: "vytron-maintenance-app.firebaseapp.com",
@@ -115,7 +126,8 @@
     const app = initializeApp(firebaseConfig);
     const db  = getFirestore(app);
 
-    const $ = s=>document.querySelector(s);
+    // Helpers
+    const $ = s => document.querySelector(s);
     const fields = ["id","name","line","station","make","model","serial","location","notes"];
     const input = k => document.getElementById("f_"+k);
     const getForm = () => Object.fromEntries(fields.map(k=>[k,(input(k)?.value||"").trim()]));
@@ -124,15 +136,19 @@
 
     let selectedId = "";
 
-    // list
+    // Live equipment list
     const listEl = $("#list");
     onSnapshot(collection(db,"equipment"), snap=>{
       const items=[];
-      snap.forEach(doc=>{ const d=doc.data()||{}; items.push({id:doc.id, name:d.name||"(unnamed)", line:d.line||"?"}); });
+      snap.forEach(docSnap=>{
+        const d=docSnap.data()||{};
+        items.push({id:docSnap.id, name:d.name||"(unnamed)", line:d.line||"?"});
+      });
       listEl.innerHTML = items.length ? "" : "No equipment yet.";
       items.sort((a,b)=>a.name.localeCompare(b.name)).forEach(it=>{
         const btn=document.createElement("button");
-        btn.className="pill"; btn.textContent=`${it.name} • Line ${it.line} • ${it.id}`;
+        btn.className="pill";
+        btn.textContent=`${it.name} • Line ${it.line} • ${it.id}`;
         btn.onclick=()=>selectItem(it.id);
         listEl.appendChild(btn);
       });
@@ -155,36 +171,78 @@
       window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});
     }
 
+    // Buttons
     $("#btnFill").onclick = async ()=>{
       if(!selectedId) return;
       const s=await getDoc(doc(db,"equipment",selectedId));
-      if(s.exists()){ setForm({id:selectedId, ...s.data()}); document.getElementById("form").scrollIntoView({behavior:"smooth"}); }
+      if(s.exists()){
+        setForm({id:selectedId, ...s.data()});
+        document.getElementById("form").scrollIntoView({behavior:"smooth"});
+      }
     };
-    $("#btnToQR").onclick = ()=>{ if(selectedId) window.open(`./equip.html?id=${encodeURIComponent(selectedId)}`,"_blank"); };
+
+    $("#btnToQR").onclick = ()=>{
+      if(selectedId) window.open(`./equip.html?id=${encodeURIComponent(selectedId)}`,"_blank");
+    };
+
     $("#btnClear").onclick = ()=> setForm({});
+
     $("#btnSave").onclick = async ()=>{
-    let d = getForm();
-    let id = (d.id || slug(d.name)).trim();
-    if (!id) { alert("ID or Name is required."); return; }
-// Strip the id field so we never send `undefined`
-const { id: _omit, ...rest } = d;
-const data = { ...rest, updatedAt: serverTimestamp() };
+      let d = getForm();
+      let id = (d.id || slug(d.name)).trim();
+      if (!id){ alert("ID or Name is required."); return; }
 
-await setDoc(doc(db,"equipment", id), data, { merge:true });
+      // never send undefined fields; strip id out of the payload
+      const { id: _omit, ...rest } = d;
+      const data = { ...rest, updatedAt: serverTimestamp() };
 
-      selectedId=id; $("#saveMsg").textContent=`Saved ${id} ✓`; setTimeout(()=>$("#saveMsg").textContent="",2000);
+      try{
+        await setDoc(doc(db,"equipment",id), data, { merge:true });
+        selectedId=id;
+        $("#saveMsg").textContent=`Saved ${id} ✓`;
+        setTimeout(()=>$("#saveMsg").textContent="",2000);
+      }catch(e){
+        alert("Save failed: " + (e.message||e));
+        console.error(e);
+      }
     };
 
-    // deep-link edit
-    const params=new URLSearchParams(location.search);
-    const editId=params.get("edit");
-    if(editId){ const s=await getDoc(doc(db,"equipment",editId)); if(s.exists()){ setForm({id:editId,...s.data()}); document.getElementById("form").scrollIntoView({behavior:"smooth"});} }
+    document.getElementById("btnDelete").onclick = async () => {
+      if (!selectedId) return;
+      const sure = confirm(`Delete equipment "${selectedId}"? This cannot be undone.`);
+      if (!sure) return;
+      try{
+        await deleteDoc(doc(db, "equipment", selectedId));
+        selectedId = "";
+        document.getElementById("detail").style.display = "none";
+        setForm({});
+        const msg = document.getElementById("saveMsg");
+        msg.textContent = "Deleted ✓";
+        setTimeout(()=> msg.textContent="", 1500);
+      }catch(e){
+        alert("Delete failed: " + (e.message||e));
+        console.error(e);
+      }
+    };
+
+    // deep-link edit (?edit=<id>)
+    (async function(){
+      const params=new URLSearchParams(location.search);
+      const editId=params.get("edit");
+      if(editId){
+        const s=await getDoc(doc(db,"equipment",editId));
+        if(s.exists()){
+          setForm({id:editId, ...s.data()});
+          document.getElementById("form").scrollIntoView({behavior:"smooth"});
+        }
+      }
+    })();
   </script>
 
-  <!-- Version bumpper: add ?v=… to all internal .html links -->
+  <!-- Version bumper: add ?v=… to all internal .html links -->
   <script>
     document.addEventListener('DOMContentLoaded', ()=>{
-      document.querySelectorAll('a[href$=".html"], a[href$=".html#form"]').forEach(a=>{
+      document.querySelectorAll('a[href$=".html"], a[href$=".html#form"], a[href^="./index.html?edit"]').forEach(a=>{
         const u=new URL(a.getAttribute('href'), location.href);
         if(!u.search) u.search = appVersion; else u.search += '&'+appVersion;
         a.setAttribute('href', u.pathname + u.search + u.hash);
