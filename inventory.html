@@ -24,6 +24,33 @@
   <link rel="icon" href="data:;base64,=">
 <!-- Tiny inline favicon to stop the 404 -->
 <link rel="icon" href="data:,">
+  <!-- Quick search + Add item -->
+<section class="card" style="margin-bottom:12px">
+  <div class="grid" style="align-items:end">
+    <div class="grid-column:2">
+      <label>Quick search</label>
+      <input id="invSearch" placeholder="Name, part #, or location…" />
+    </div>
+    <div class="right" style="align-self:center">
+      <button id="btnClearSearch">Clear</button>
+    </div>
+  </div>
+</section>
+
+<section class="card" style="margin-bottom:12px">
+  <h3 style="margin:0 0 8px">Add item</h3>
+  <div class="grid">
+    <div><label>Name*</label><input id="add_name" placeholder="e.g. Heat sink" /></div>
+    <div><label>Part #</label><input id="add_part" placeholder="PB1013" /></div>
+    <div><label>Location</label><input id="add_loc" placeholder="Storeroom B42" /></div>
+    <div><label>Qty</label><input id="add_qty" type="number" inputmode="numeric" value="0"/></div>
+    <div><label>Min</label><input id="add_min" type="number" inputmode="numeric" value="0"/></div>
+  </div>
+  <div class="right" style="margin-top:8px">
+    <button id="btnAdd" class="primary">Save item</button>
+  </div>
+  <div id="addMsg" class="meta" style="margin-top:6px"></div>
+</section>
   <title>Inventory</title>
   <link rel="stylesheet" href="style.css" />
   <style>
