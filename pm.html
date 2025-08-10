@@ -1,182 +1,129 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <script>const appVersion='v=3';</script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- PWA -->
-<link rel="manifest" href="./manifest.webmanifest">
-<meta name="theme-color" content="#0f1116">
-
-<!-- iOS “add to home screen” support -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="./icons/icon-192.png"> <!-- temporary; real 180x180 soon -->
-
-<!-- Register the service worker -->
-<script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js").catch(()=>{});
-    });
-  }
-</script>
   <title>PM Tasks • Vytron</title>
-<link rel="icon" href="data:;base64,=">
-  <!-- Optional: keep your stylesheet if you have one -->
-  <link rel="stylesheet" href="./style.css" />
 
-  <style>
-    body { max-width: 820px; margin: 0 auto; padding: 14px; font-family: system-ui, Arial, sans-serif; }
-    h1 { margin: 6px 0 12px; }
-    .meta { color:#888; font-size: 0.95rem; }
-    .err  { color:#d33; margin: 6px 0 12px; }
-    .card { border: 1px solid #2a2a2a33; border-radius: 8px; padding: 12px; margin: 10px 0; background: #11111110; }
-    .row  { display:flex; gap:12px; align-items:center; flex-wrap: wrap; }
-    .tag  { font-size: 0.82rem; padding: 2px 6px; border-radius: 6px; background:#eee2; border:1px solid #ccc5; }
-    .due  { color:#d33; font-weight: 600; }
-    .ok   { color:#3a3; font-weight: 600; }
-    button { padding: 6px 10px; border-radius: 6px; border:1px solid #1b6; background:#29a36a; color:white; cursor:pointer; }
-    button:disabled { opacity: .6; cursor: default; }
-  </style>
+  <link rel="stylesheet" href="./style.css?v=3" />
+  <link rel="icon" href="data:,">
+</head>
+<body>
+  <header>
+    <a href="./index.html">← Back</a>
+    <h2>PM Tasks</h2>
+  </header>
 
-  <!-- Firebase (CDN) -->
+  <div class="meta" style="margin:4px 16px 12px">
+    Tap <b>Done</b> after weekly bag filter changes or the daily water check (≥3 lines per side).
+  </div>
+  <main style="max-width:900px;margin:0 auto;padding:0 16px">
+    <div id="pmError" class="err"></div>
+    <div id="pmList" class="card">Loading…</div>
+  </main>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-    import {
-      getFirestore, collection, getDocs, doc, updateDoc,
-      serverTimestamp, Timestamp
-    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, doc, updateDoc, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-    // ---- your project ----
     const firebaseConfig = {
       apiKey: "AIzaSyAYA7OzOQBpyHsOYIDK89Z4-8BbrRleZ7A",
       authDomain: "vytron-maintenance-app.firebaseapp.com",
       projectId: "vytron-maintenance-app",
       storageBucket: "vytron-maintenance-app.firebasestorage.app",
       messagingSenderId: "951172681125",
-      appId: "1:951172681125:web:278450c515a89547f32c4c",
-      measurementId: "G-FEKBB1K6V7"
+      appId: "1:951172681125:web:278450c515a89547f32c4c"
     };
-
     const app = initializeApp(firebaseConfig);
     const db  = getFirestore(app);
 
     const listEl = document.getElementById("pmList");
     const errEl  = document.getElementById("pmError");
 
-    // Utility: make a Date at local midnight + N days
-    function nextDueFrom(days) {
-      const d = new Date();
-      d.setHours(0,0,0,0);
-      d.setDate(d.getDate() + (Number(days) || 0));
+    function nextDueFrom(days){
+      const d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() + (Number(days)||0));
       return Timestamp.fromDate(d);
     }
-
-    function fmt(dt) {
-      if (!dt) return "—";
-      const d = dt instanceof Timestamp ? dt.toDate() : dt;
-      return d.toLocaleString();
+    function toDate(x){ return x?.toDate ? x.toDate() : (x? new Date(x): null); }
+    function fmt(x){ const d=toDate(x); return d? d.toLocaleString() : "—"; }
+    function status(next){
+      if(!next) return ["No schedule",""];
+      const today=new Date(); today.setHours(0,0,0,0);
+      const due=toDate(next); if(!due) return ["No schedule",""];
+      due.setHours(0,0,0,0);
+      if(+due < +today) return ["OVERDUE","due"];
+      if(+due === +today) return ["Due today","due"];
+      return ["OK","ok"];
     }
 
-    function statusText(nextDueTs) {
-      if (!nextDueTs) return ["No schedule", ""];
-      const now = new Date(); now.setHours(0,0,0,0);
-      const due = nextDueTs.toDate(); due.setHours(0,0,0,0);
-      if (due < now)  return ["OVERDUE", "due"];
-      if (+due === +now) return ["Due today", "due"];
-      return ["OK", "ok"];
-    }
+    async function loadPM(){
+      try{
+        errEl.textContent=""; listEl.textContent="Loading…";
+        const snap = await getDocs(collection(db,"pmTasks"));
+        if (snap.empty){ listEl.innerHTML="<p>No PM tasks found.</p>"; return; }
 
-    async function loadPM() {
-      try {
-        listEl.innerHTML = "Loading…";
-        errEl.textContent = "";
-
-        // Collection name MUST be exactly pmTasks (root)
-        const snap = await getDocs(collection(db, "pmTasks"));
-        if (snap.empty) {
-          listEl.innerHTML = "<p>No PM tasks found.</p>";
-          return;
-        }
-
-        const items = [];
-        snap.forEach(docSnap => {
-          const x = docSnap.data();
+        const items=[]; snap.forEach(s=>{
+          const x=s.data();
           items.push({
-            id: docSnap.id,
-            title: x.title || docSnap.id,
-            notes: x.notes || "",
-            intervalDays: Number(x.intervalDays) || (x.frequency === "daily" ? 1 : 7),
-            lastDone: x.lastDone || null,
-            nextDue: x.nextDue || null,
-            appliesTo: Array.isArray(x.appliesTo) ? x.appliesTo : (typeof x.appliesTo === "string" ? [x.appliesTo] : [])
+            id:s.id,
+            title:x.title||s.id,
+            notes:x.notes||"",
+            intervalDays:Number(x.intervalDays)||7,
+            lastDone:x.lastDone||null,
+            nextDue:x.nextDue||null,
+            appliesTo:Array.isArray(x.appliesTo)?x.appliesTo:(x.appliesTo?[x.appliesTo]:[])
           });
         });
+        items.sort((a,b)=> (a.nextDue?.toMillis?.()??9e15) - (b.nextDue?.toMillis?.()??9e15));
 
-        // Sort: overdue first, then by nextDue
-        items.sort((a,b) => {
-          const an = a.nextDue?.toMillis?.() ?? 9e15;
-          const bn = b.nextDue?.toMillis?.() ?? 9e15;
-          return an - bn;
-        });
-
-        listEl.innerHTML = items.map(t => {
-          const [label, cls] = statusText(t.nextDue);
-          const applies = t.appliesTo.length ? t.appliesTo.join(", ") : "All";
+        listEl.innerHTML = items.map(t=>{
+          const [lab,cls]=status(t.nextDue);
+          const applies=t.appliesTo.length? t.appliesTo.join(", ") : "All";
           return `
             <div class="card" data-id="${t.id}">
               <div class="row" style="justify-content:space-between">
                 <div>
                   <div style="font-weight:700">${t.title}</div>
-                  <div class="meta">${t.notes || ""}</div>
-                  <div class="meta">Last done: ${fmt(t.lastDone)} • Next due: ${fmt(t.nextDue)}</div>
-                  <div class="meta">Interval: ${t.intervalDays} day(s) • Applies to: <span class="tag">${applies}</span></div>
+                  <div class="meta">${t.notes||""}</div>
+                  <div class="meta">Last: ${fmt(t.lastDone)} • Next: ${fmt(t.nextDue)}</div>
+                  <div class="meta">Interval: ${t.intervalDays}d • Applies: ${applies}</div>
                 </div>
-                <div class="${cls}">${label}</div>
+                <div class="${cls}" style="align-self:center">${lab}</div>
               </div>
-              <div style="margin-top:10px" class="row">
-                <button class="btnDone">Done</button>
-              </div>
-            </div>
-          `;
+              <div style="margin-top:8px"><button class="btnDone">Done</button></div>
+            </div>`;
         }).join("");
 
-        // Wire “Done”
-        document.querySelectorAll(".card .btnDone").forEach(btn => {
-          btn.addEventListener("click", async () => {
-            const card = btn.closest(".card");
-            const id   = card.dataset.id;
-            const item = items.find(x => x.id === id);
-            btn.disabled = true;
-            try {
-              await updateDoc(doc(db, "pmTasks", id), {
+        document.querySelectorAll(".btnDone").forEach(btn=>{
+          btn.addEventListener("click", async ()=>{
+            const card=btn.closest(".card"); const id=card.dataset.id;
+            const item=items.find(x=>x.id===id);
+            btn.disabled=true;
+            try{
+              await updateDoc(doc(db,"pmTasks",id), {
                 lastDone: serverTimestamp(),
-                nextDue: nextDueFrom(item.intervalDays)
+                nextDue:  nextDueFrom(item.intervalDays)
               });
-              // simple UI refresh
               await loadPM();
-            } catch (e) {
-              errEl.textContent = "Update failed: " + (e.message || e);
-              btn.disabled = false;
-            }
+            }catch(e){ errEl.textContent="Update failed: "+(e.message||e); btn.disabled=false; }
           });
         });
 
-      } catch (e) {
-        console.error(e);
-        errEl.textContent = "Error: " + (e.message || e);
-        listEl.innerHTML = "";
-      }
+      }catch(e){ console.error(e); errEl.textContent="Error: "+(e.message||e); listEl.innerHTML=""; }
     }
 
     loadPM();
   </script>
-</head>
-<body>
-  <a href="./index.html">← Back</a>
-  <h1>PM Tasks • Vytron</h1>
-  <p class="meta">Tap <b>Done</b> after weekly bag filter changes or the daily water check.</p>
-  <div id="pmError" class="err"></div>
-  <div id="pmList">Loading…</div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', ()=>{
+      document.querySelectorAll('a[href$=".html"]').forEach(a=>{
+        const u=new URL(a.getAttribute('href'), location.href);
+        if(!u.search) u.search = appVersion; else u.search += '&'+appVersion;
+        a.setAttribute('href', u.pathname + u.search + u.hash);
+      });
+    });
+  </script>
 </body>
 </html>
