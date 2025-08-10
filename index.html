@@ -1,36 +1,25 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <script>const appVersion='v=3';</script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- PWA -->
-<link rel="manifest" href="./manifest.webmanifest">
-<meta name="theme-color" content="#0f1116">
-
-<!-- iOS “add to home screen” support -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="./icons/icon-192.png"> <!-- temporary; real 180x180 soon -->
-
-<!-- Register the service worker -->
-<script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js").catch(()=>{});
-    });
-  }
-</script>
-  <link rel="stylesheet" href="./style.css?v=2">
-<!-- Tiny inline favicon to stop the 404 -->
-<link rel="icon" href="data:,">
-  <link rel="icon" href="data:;base64,=">
   <title>Vytron • Maintenance Pilot</title>
-  <!-- Silences the favicon 404 -->
-  <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+
+  <!-- PWA + icon -->
+  <link rel="manifest" href="./manifest.webmanifest?{{appVersion}}">
+  <meta name="theme-color" content="#0f1116">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png?{{appVersion}}">
+  <link rel="icon" href="data:;base64,=">
+
+  <!-- Style -->
+  <link rel="stylesheet" href="./style.css?v=3">
   <style>
-    :root { --bg:#0f1116; --card:#171923; --text:#e9eef5; --muted:#9aa4b2; --accent:#2b90ff; --line:#242938; }
-    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial}
-    header{padding:16px 18px;border-bottom:1px solid var(--line);font-weight:700}
+    :root { --bg:#0f1116; --card:#171923; --text:#e9eef5; --muted:#9aa4b2; --accent:#2b90ff; --line:#242938 }
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+    header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line)}
     main{max-width:980px;margin:0 auto;padding:16px}
     h3{margin:0 0 8px}
     .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px;margin:12px 0}
@@ -47,30 +36,35 @@
     .pill:hover{border-color:var(--accent)}
     .kv{margin:2px 0} .kv b{color:#bcd0ea}
     a.link{color:var(--accent);text-decoration:none}
+    .tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+    .tile{display:block;background:#1e1f24;color:#fff;padding:16px;border-radius:12px;text-decoration:none}
   </style>
+
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js?"+appVersion).catch(()=>{}));
+    }
+  </script>
 </head>
 <body>
-<header style="display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px 16px;">
-  <div style="font-weight:700">Vytron • Maintenance Pilot</div>
-  <nav style="display:flex;gap:10px;">
-    <a href="./inventory.html" style="text-decoration:none;padding:6px 10px;border-radius:8px;background:#2a2c33;color:#fff">Inventory</a>
-    <a href="./pm.html" style="text-decoration:none;padding:6px 10px;border-radius:8px;background:#2a2c33;color:#fff">PM</a>
-  </nav>
-</header>
-<section style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 16px 12px;">
-  <a href="./inventory.html" style="display:block;background:#1e1f24;color:#fff;padding:16px;border-radius:12px;text-decoration:none">
-    <div style="font-weight:700">Inventory</div>
-    <div style="opacity:.8">Adjust counts, see mins</div>
-  </a>
-  <a href="./pm.html" style="display:block;background:#1e1f24;color:#fff;padding:16px;border-radius:12px;text-decoration:none">
-    <div style="font-weight:700">PM Tasks</div>
-    <div style="opacity:.8">Due/overdue • Mark done</div>
-  </a>
-</section>
+  <header>
+    <div style="font-weight:700">Vytron • Maintenance Pilot</div>
+    <nav style="display:flex;gap:10px;">
+      <a href="./inventory.html">Inventory</a>
+      <a href="./pm.html">PM</a>
+    </nav>
+  </header>
+
   <main>
-    <!-- ADD / EDIT -->
+    <!-- Quick tiles -->
+    <section class="tiles">
+      <a class="tile" href="./inventory.html"><div style="font-weight:700">Inventory</div><div class="meta">Adjust counts, set mins</div></a>
+      <a class="tile" href="./pm.html"><div style="font-weight:700">PM Tasks</div><div class="meta">Due/overdue • Done</div></a>
+    </section>
+
+    <!-- ADD / EDIT EQUIPMENT -->
     <div class="card" id="form">
-      <h3 style="margin:0 0 8px">Add / Edit Equipment</h3>
+      <h3>Add / Edit Equipment</h3>
       <div class="grid">
         <div><label>ID (slug) *</label><input id="f_id" placeholder="l4-extruder" /></div>
         <div><label>Name *</label><input id="f_name" placeholder="Extruder" /></div>
@@ -80,9 +74,7 @@
         <div><label>Model</label><input id="f_model" placeholder="Pacemaker III" /></div>
         <div><label>Serial</label><input id="f_serial" placeholder="14419" /></div>
         <div><label>Location</label><input id="f_location" placeholder="Line 4 – Station B" /></div>
-        <div class="grid" style="grid-column:1/-1">
-          <div style="grid-column:1/-1"><label>Notes</label><textarea id="f_notes" placeholder="Short note…"></textarea></div>
-        </div>
+        <div style="grid-column:1/-1"><label>Notes</label><textarea id="f_notes" placeholder="Short note…"></textarea></div>
       </div>
       <div class="right">
         <button id="btnClear">Clear</button>
@@ -91,15 +83,15 @@
       <div id="saveMsg" class="meta" style="margin-top:8px"></div>
     </div>
 
-    <!-- LIST -->
+    <!-- LIVE LIST -->
     <div class="card">
-      <h3 style="margin:0 0 8px">Equipment (live)</h3>
+      <h3>Equipment (live)</h3>
       <div id="list">Loading…</div>
     </div>
 
     <!-- DETAIL -->
     <div class="card" id="detail" style="display:none">
-      <h3 style="margin:0 0 8px">Selected</h3>
+      <h3>Selected</h3>
       <div id="detailBody" class="meta">Tap an item above.</div>
       <div class="right" style="margin-top:8px">
         <button id="btnToQR">Open QR Page</button>
@@ -108,16 +100,10 @@
     </div>
   </main>
 
-  <!-- Single inline module: nothing else to link/404 -->
   <script type="module">
-    // Firebase (CDN)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-    import {
-      getFirestore, doc, getDoc, setDoc,
-      collection, onSnapshot, serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, setDoc, collection, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-    // Your project
     const firebaseConfig = {
       apiKey: "AIzaSyAYA7OzOQBpyHsOYIDK89Z4-8BbrRleZ7A",
       authDomain: "vytron-maintenance-app.firebaseapp.com",
@@ -126,106 +112,79 @@
       messagingSenderId: "951172681125",
       appId: "1:951172681125:web:278450c515a89547f32c4c"
     };
-
-    // Init
     const app = initializeApp(firebaseConfig);
     const db  = getFirestore(app);
 
-    // --- Helpers
-    const $ = s => document.querySelector(s);
-    const $$ = s => document.querySelectorAll(s);
-    const byId = id => document.getElementById(id);
+    const $ = s=>document.querySelector(s);
     const fields = ["id","name","line","station","make","model","serial","location","notes"];
-    const input = k => byId("f_"+k);
-    const getForm = () => Object.fromEntries(fields.map(k=>[k, (input(k)?.value||"").trim()]));
-    const setForm = (d={}) => fields.forEach(k => { if(input(k)) input(k).value = d[k] || ""; });
-    const slugify = s => (s||"").toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+    const input = k => document.getElementById("f_"+k);
+    const getForm = () => Object.fromEntries(fields.map(k=>[k,(input(k)?.value||"").trim()]));
+    const setForm = (d={}) => fields.forEach(k=>{ if(input(k)) input(k).value = d[k] || ""; });
+    const slug = s => (s||"").toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
 
     let selectedId = "";
 
-    // --- Live list
-    const listEl = byId("list");
-    onSnapshot(collection(db,"equipment"), snap => {
-      const items = [];
-      snap.forEach(doc => {
-        const d = doc.data() || {};
-        items.push({ id: doc.id, name: d.name||"(unnamed)", line: d.line||"?" });
-      });
-      if (!items.length) { listEl.textContent = "No equipment yet."; return; }
-      listEl.innerHTML = "";
+    // list
+    const listEl = $("#list");
+    onSnapshot(collection(db,"equipment"), snap=>{
+      const items=[];
+      snap.forEach(doc=>{ const d=doc.data()||{}; items.push({id:doc.id, name:d.name||"(unnamed)", line:d.line||"?"}); });
+      listEl.innerHTML = items.length ? "" : "No equipment yet.";
       items.sort((a,b)=>a.name.localeCompare(b.name)).forEach(it=>{
-        const btn = document.createElement("button");
-        btn.className = "pill";
-        btn.textContent = `${it.name} • Line ${it.line} • ${it.id}`;
-        btn.onclick = () => selectItem(it.id);
+        const btn=document.createElement("button");
+        btn.className="pill"; btn.textContent=`${it.name} • Line ${it.line} • ${it.id}`;
+        btn.onclick=()=>selectItem(it.id);
         listEl.appendChild(btn);
       });
     });
 
-    // --- Select item -> show detail
     async function selectItem(id){
-      selectedId = id;
-      const ref = doc(db,"equipment",id);
-      const snap = await getDoc(ref);
-      const d = snap.exists() ? snap.data() : {};
-      const body = byId("detailBody");
-      byId("detail").style.display = "block";
-      body.innerHTML = `
+      selectedId=id;
+      const ref=doc(db,"equipment",id);
+      const snap=await getDoc(ref);
+      const d=snap.exists()?snap.data():{};
+      $("#detail").style.display="block";
+      $("#detailBody").innerHTML = `
         <div class="kv"><b>Name:</b> ${d.name||"(unnamed)"} • <b>ID:</b> ${id}</div>
         <div class="kv"><b>Line:</b> ${d.line||""} • <b>Station:</b> ${d.station||""}</div>
         <div class="kv"><b>Make/Model:</b> ${d.make||""} ${d.model||""}</div>
         <div class="kv"><b>Serial:</b> ${d.serial||""}</div>
         <div class="kv"><b>Location:</b> ${d.location||""}</div>
-        ${d.notes ? `<div class="kv"><b>Notes:</b> ${d.notes}</div>` : ``}
+        ${d.notes?`<div class="kv"><b>Notes:</b> ${d.notes}</div>`:""}
       `;
-      window.scrollTo({top:document.body.scrollHeight, behavior:"smooth"});
+      window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});
     }
 
-    // --- Buttons
-    byId("btnFill").onclick = async () => {
-      if (!selectedId) return;
-      const snap = await getDoc(doc(db,"equipment",selectedId));
-      if (snap.exists()){
-        const d = snap.data();
-        setForm({ id:selectedId, ...d });
-        document.getElementById("form").scrollIntoView({behavior:"smooth"});
-      }
+    $("#btnFill").onclick = async ()=>{
+      if(!selectedId) return;
+      const s=await getDoc(doc(db,"equipment",selectedId));
+      if(s.exists()){ setForm({id:selectedId, ...s.data()}); document.getElementById("form").scrollIntoView({behavior:"smooth"}); }
     };
-
-    byId("btnToQR").onclick = () => {
-      if (!selectedId) return;
-      const url = `./equip.html?id=${encodeURIComponent(selectedId)}`;
-      window.open(url,"_blank");
-    };
-
-    byId("btnClear").onclick = () => setForm({});
-
-    byId("btnSave").onclick = async () => {
-      let d = getForm();
-      let id = d.id || slugify(d.name);
-      if (!id){ alert("ID or Name is required."); return; }
-
-      // normalize
-      d.id = undefined; // stored in doc id
-      d.updatedAt = serverTimestamp();
-
+    $("#btnToQR").onclick = ()=>{ if(selectedId) window.open(`./equip.html?id=${encodeURIComponent(selectedId)}`,"_blank"); };
+    $("#btnClear").onclick = ()=> setForm({});
+    $("#btnSave").onclick = async ()=>{
+      let d=getForm(); let id=d.id || slug(d.name);
+      if(!id){ alert("ID or Name is required."); return; }
+      d.id=undefined; d.updatedAt=serverTimestamp();
       await setDoc(doc(db,"equipment",id), d, {merge:true});
-      selectedId = id;
-      byId("saveMsg").textContent = `Saved ${id} ✓`;
-      setTimeout(()=>byId("saveMsg").textContent="", 2000);
+      selectedId=id; $("#saveMsg").textContent=`Saved ${id} ✓`; setTimeout(()=>$("#saveMsg").textContent="",2000);
     };
 
-    // --- Deep-link edit: index.html?edit=<id>
-    const params = new URLSearchParams(location.search);
-    const editId = params.get("edit");
-    if (editId){
-      getDoc(doc(db,"equipment",editId)).then(s=>{
-        if (s.exists()) {
-          setForm({ id:editId, ...s.data() });
-          document.getElementById("form").scrollIntoView({behavior:"smooth"});
-        }
+    // deep-link edit
+    const params=new URLSearchParams(location.search);
+    const editId=params.get("edit");
+    if(editId){ const s=await getDoc(doc(db,"equipment",editId)); if(s.exists()){ setForm({id:editId,...s.data()}); document.getElementById("form").scrollIntoView({behavior:"smooth"});} }
+  </script>
+
+  <!-- Version bumpper: add ?v=… to all internal .html links -->
+  <script>
+    document.addEventListener('DOMContentLoaded', ()=>{
+      document.querySelectorAll('a[href$=".html"], a[href$=".html#form"]').forEach(a=>{
+        const u=new URL(a.getAttribute('href'), location.href);
+        if(!u.search) u.search = appVersion; else u.search += '&'+appVersion;
+        a.setAttribute('href', u.pathname + u.search + u.hash);
       });
-    }
+    });
   </script>
 </body>
 </html>
