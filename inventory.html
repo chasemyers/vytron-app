@@ -50,17 +50,21 @@
   const db  = getFirestore(app);
 
   const list = document.querySelector('#list');
+
+  // styles (adds small buttons for Min +/-)
   const style = document.createElement('style');
   style.textContent = `
     .item { display:flex; align-items:center; gap:12px; margin:10px 0; }
-    .name { font-weight:600; }
-    .qty  { min-width:3ch; text-align:center; display:inline-block; }
+    .name { font-weight:600; min-width:220px; }
+    .sku  { opacity:.7; font-size:.9em }
+    .qty, .minv { min-width:3ch; text-align:center; display:inline-block; }
     .meta { opacity:.7; font-size:.9em; }
     .low  { color:#b00020; font-weight:700; }
     button { padding:2px 8px; }
   `;
   document.head.appendChild(style);
 
+  // Live subscribe
   onSnapshot(
     collection(db, 'inventory'),
     (snap) => {
@@ -73,27 +77,46 @@
         const min = Number(it.minQty ?? 0);
         const low = qty < min;
 
-        const el = document.createElement('div');
-        el.className = 'item';
-        el.innerHTML = `
-          <span class="name ${low?'low':''}">${it.name || it.partNumber || it.id}</span>
-          <span class="meta">(${it.partNumber || ''})</span>
-          <button class="dec">-</button>
+        const row = document.createElement('div');
+        row.className = 'item';
+        row.dataset.id = it.id;
+        row.innerHTML = `
+          <span class="name ${low?'low':''}">${it.name || it.partNumber || it.id} <span class="sku">(${it.partNumber||''})</span></span>
+
+          <button data-act="dec">-</button>
           <span class="qty ${low?'low':''}">${qty}</span>
-          <button class="inc">+</button>
-          <span class="meta">Min: ${min}</span>
+          <button data-act="inc">+</button>
+
+          <span class="meta" style="margin-left:8px">Min:</span>
+          <button data-act="min-dec">-</button>
+          <span class="minv">${min}</span>
+          <button data-act="min-inc">+</button>
         `;
-        el.querySelector('.inc').addEventListener('click', () => bump(it.id, +1));
-        el.querySelector('.dec').addEventListener('click', () => bump(it.id, -1));
-        list.appendChild(el);
+        list.appendChild(row);
       });
     },
     (err) => { list.innerHTML = `<div style="color:#ff6b6b">Error: ${err.message}</div>`; }
   );
 
-  async function bump(id, delta) {
-    await updateDoc(doc(db,'inventory',id), { qty: increment(delta) });
-  }
+  // Click handler for all +/- buttons
+  list.addEventListener('click', async (e)=>{
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const card = btn.closest('.item');
+    const id   = card?.dataset.id;
+    if (!id) return;
+
+    const act = btn.dataset.act;
+    try {
+      if (act === 'inc')      await updateDoc(doc(db,'inventory',id), { qty:    increment(1) });
+      else if (act === 'dec') await updateDoc(doc(db,'inventory',id), { qty:    increment(-1) });
+      else if (act === 'min-inc') await updateDoc(doc(db,'inventory',id), { minQty: increment(1) });
+      else if (act === 'min-dec') await updateDoc(doc(db,'inventory',id), { minQty: increment(-1) });
+    } catch (err) {
+      alert('Update failed: ' + err.message);
+      console.error(err);
+    }
+  });
 </script>
 </body>
 </html>
