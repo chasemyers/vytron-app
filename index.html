@@ -163,10 +163,15 @@
     $("#btnToQR").onclick = ()=>{ if(selectedId) window.open(`./equip.html?id=${encodeURIComponent(selectedId)}`,"_blank"); };
     $("#btnClear").onclick = ()=> setForm({});
     $("#btnSave").onclick = async ()=>{
-      let d=getForm(); let id=d.id || slug(d.name);
-      if(!id){ alert("ID or Name is required."); return; }
-      d.id=undefined; d.updatedAt=serverTimestamp();
-      await setDoc(doc(db,"equipment",id), d, {merge:true});
+    let d = getForm();
+    let id = (d.id || slug(d.name)).trim();
+    if (!id) { alert("ID or Name is required."); return; }
+// Strip the id field so we never send `undefined`
+const { id: _omit, ...rest } = d;
+const data = { ...rest, updatedAt: serverTimestamp() };
+
+await setDoc(doc(db,"equipment", id), data, { merge:true });
+
       selectedId=id; $("#saveMsg").textContent=`Saved ${id} ✓`; setTimeout(()=>$("#saveMsg").textContent="",2000);
     };
 
