@@ -1,302 +1,189 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
+  <script>const appVersion='v=3';</script>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <!-- PWA -->
-<link rel="manifest" href="./manifest.webmanifest">
-<meta name="theme-color" content="#0f1116">
-
-<!-- iOS “add to home screen” support -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="./icons/icon-192.png"> <!-- temporary; real 180x180 soon -->
-
-<!-- Register the service worker -->
-<script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js").catch(()=>{});
-    });
-  }
-</script>
-  <link rel="stylesheet" href="./style.css?v=2">
-  <link rel="icon" href="data:;base64,=">
-<!-- Tiny inline favicon to stop the 404 -->
-<link rel="icon" href="data:,">
-  <!-- Quick search + Add item -->
-<section class="card" style="margin-bottom:12px">
-  <div class="grid" style="align-items:end">
-    <div class="grid-column:2">
-      <label>Quick search</label>
-      <input id="invSearch" placeholder="Name, part #, or location…" />
-    </div>
-    <div class="right" style="align-self:center">
-      <button id="btnClearSearch">Clear</button>
-    </div>
-  </div>
-</section>
-
-<section class="card" style="margin-bottom:12px">
-  <h3 style="margin:0 0 8px">Add item</h3>
-  <div class="grid">
-    <div><label>Name*</label><input id="add_name" placeholder="e.g. Heat sink" /></div>
-    <div><label>Part #</label><input id="add_part" placeholder="PB1013" /></div>
-    <div><label>Location</label><input id="add_loc" placeholder="Storeroom B42" /></div>
-    <div><label>Qty</label><input id="add_qty" type="number" inputmode="numeric" value="0"/></div>
-    <div><label>Min</label><input id="add_min" type="number" inputmode="numeric" value="0"/></div>
-  </div>
-  <div class="right" style="margin-top:8px">
-    <button id="btnAdd" class="primary">Save item</button>
-  </div>
-  <div id="addMsg" class="meta" style="margin-top:6px"></div>
-</section>
-  <title>Inventory</title>
-  <link rel="stylesheet" href="style.css" />
-  <style>
-    body { font-family: system-ui, Arial, sans-serif; padding:16px; }
-    header a { text-decoration:none; }
-    .card { background:#1e1f24; color:#fff; padding:12px; border-radius:10px; margin:10px 0; }
-    .row { display:flex; justify-content:space-between; align-items:center; gap:8px; }
-    .meta { opacity:.8; font-size:.9rem; }
-    button { padding:6px 10px; border-radius:8px; border:none; cursor:pointer; }
-    .qty { min-width:3rem; text-align:center; font-weight:700; }
-    .danger { background:#b02020; color:#fff; }
-    .ok { background:#2f7d32; color:#fff; }
-    .ghost { background:#2a2c33; color:#fff; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Inventory • Vytron</title>
+  <link rel="stylesheet" href="./style.css?v=3" />
+  <link rel="icon" href="data:,">
 </head>
 <body>
   <header>
-    <a href="./">← Back</a>
+    <a href="./index.html">← Back</a>
     <h2>Inventory</h2>
-    <div class="meta">Tap +/– to adjust quantity. Items below minimum show red.</div>
   </header>
 
-  <div id="list">Loading…</div>
+  <!-- Quick search -->
+  <section class="card" style="margin-bottom:12px">
+    <div class="grid" style="align-items:end">
+      <div>
+        <label>Quick search</label>
+        <input id="invSearch" placeholder="Name, part #, or location…" />
+      </div>
+      <div class="right" style="align-self:center">
+        <button id="btnClearSearch">Clear</button>
+      </div>
+    </div>
+  </section>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-  import {
-    getFirestore, collection, doc, onSnapshot, updateDoc, increment
-  } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+  <!-- Add item -->
+  <section class="card" style="margin-bottom:12px">
+    <h3 style="margin:0 0 8px">Add item</h3>
+    <div class="grid">
+      <div><label>Name*</label><input id="add_name" placeholder="e.g. Heat sink" /></div>
+      <div><label>Part #</label><input id="add_part" placeholder="PB1013" /></div>
+      <div><label>Location</label><input id="add_loc" placeholder="Storeroom B42" /></div>
+      <div><label>Qty</label><input id="add_qty" type="number" inputmode="numeric" value="0"/></div>
+      <div><label>Min</label><input id="add_min" type="number" inputmode="numeric" value="0"/></div>
+    </div>
+    <div class="right" style="margin-top:8px">
+      <button id="btnAdd" class="primary">Save item</button>
+    </div>
+    <div id="addMsg" class="meta" style="margin-top:6px"></div>
+  </section>
 
-  // Firebase (your project)
-  const firebaseConfig = {
-    apiKey: "AIzaSyAYA7OzOQBpyHsOYIDK89Z4-8BbrRleZ7A",
-    authDomain: "vytron-maintenance-app.firebaseapp.com",
-    projectId: "vytron-maintenance-app",
-    storageBucket: "vytron-maintenance-app.firebasestorage.app",
-    messagingSenderId: "951172681125",
-    appId: "1:951172681125:web:278450c515a89547f32c4c"
-  };
-  const app = initializeApp(firebaseConfig);
-  const db  = getFirestore(app);
-  // ------- Search + Add Item wiring -------
+  <!-- List -->
+  <div class="card">
+    <h3>Items</h3>
+    <div id="list">Loading…</div>
+  </div>
 
-// cache for all inventory documents (so search doesn't re-hit Firestore)
-let invAll = [];
-let searchQ = "";
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import { getFirestore, collection, getDocs, setDoc, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-// Small slug helper (for stable IDs)
-function slug(s) {
-  return String(s || "")
-    .trim().toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-// Case-insensitive match against name/part/location
-function matches(it, q) {
-  if (!q) return true;
-  const s = q.toLowerCase();
-  return [it.name, it.partNumber, it.location].some(v => (v || "").toLowerCase().includes(s));
-}
-
-// Renders the list from invAll using the existing row builder
-async function loadInventory() {
-  // fetch, fill cache, then render
-  const snap = await getDocs(collection(db, "inventory"));
-  invAll = [];
-  snap.forEach(d => invAll.push({ id: d.id, ...d.data() }));
-  renderInventory();
-}
-
-// Use your current row builder, but filter first
-function renderInventory() {
-  const list = document.getElementById("list");
-  list.innerHTML = "";
-  const rows = invAll
-    .filter(it => matches(it, searchQ))
-    .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-
-  if (rows.length === 0) {
-    list.innerHTML = `<div class="meta">No items match “${searchQ}”.</div>`;
-    return;
-  }
-
-  // ---- Build each row (reuse your existing rendering/handlers) ----
-  // If you already had code that looped over Firestore docs to make rows,
-  // move that code here and replace the loop source with "rows".
-  rows.forEach(it => {
-    // Example structure; keep your existing +/- and Min handlers:
-    const row = document.createElement("div");
-    row.className = "row";
-
-    // name + part
-    const name = document.createElement("b");
-    name.textContent = it.name || "(unnamed)";
-    const small = document.createElement("span");
-    small.className = "meta";
-    small.style.marginLeft = "6px";
-    small.textContent = `(${it.partNumber || it.id})`;
-
-    // qty / buttons
-    const qtyWrap = document.createElement("span");
-    qtyWrap.style.marginLeft = "12px";
-    const btnMinus = document.createElement("button");
-    btnMinus.textContent = "–";
-    const qtyVal = document.createElement("span");
-    qtyVal.style.margin = "0 8px";
-    qtyVal.textContent = it.qty ?? 0;
-    const btnPlus = document.createElement("button");
-    btnPlus.textContent = "+";
-
-    // min editor
-    const minWrap = document.createElement("span");
-    minWrap.className = "meta";
-    minWrap.style.marginLeft = "12px";
-    const minLabel = document.createElement("span");
-    minLabel.textContent = "Min: ";
-    const minInput = document.createElement("input");
-    minInput.type = "number";
-    minInput.value = it.minQty ?? 0;
-    minInput.style.width = "56px";
-
-    // red if below min
-    const setLowStyle = () => {
-      const low = (it.qty ?? 0) < (it.minQty ?? 0);
-      name.style.color = low ? "var(--danger, #e5484d)" : "";
+    const firebaseConfig = {
+      apiKey: "AIzaSyAYA7OzOQBpyHsOYIDK89Z4-8BbrRleZ7A",
+      authDomain: "vytron-maintenance-app.firebaseapp.com",
+      projectId: "vytron-maintenance-app",
+      storageBucket: "vytron-maintenance-app.firebasestorage.app",
+      messagingSenderId: "951172681125",
+      appId: "1:951172681125:web:278450c515a89547f32c4c"
     };
-    setLowStyle();
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
 
-    // wire +/- and min
-    btnMinus.addEventListener("click", async () => {
-      const q = Math.max(0, (it.qty ?? 0) - 1);
-      await updateDoc(doc(db, "inventory", it.id), { qty: q });
-      it.qty = q;
-      qtyVal.textContent = q;
-      setLowStyle();
-    });
-    btnPlus.addEventListener("click", async () => {
-      const q = (it.qty ?? 0) + 1;
-      await updateDoc(doc(db, "inventory", it.id), { qty: q });
-      it.qty = q;
-      qtyVal.textContent = q;
-      setLowStyle();
-    });
-    minInput.addEventListener("change", async () => {
-      const m = parseInt(minInput.value || "0", 10);
-      await updateDoc(doc(db, "inventory", it.id), { minQty: isNaN(m) ? 0 : m });
-      it.minQty = isNaN(m) ? 0 : m;
-      setLowStyle();
-    });
+    // cache + search
+    let invAll = [];
+    let searchQ = "";
 
-    qtyWrap.append(btnMinus, qtyVal, btnPlus);
-    minWrap.append(minLabel, minInput);
+    const list = document.getElementById("list");
+    const $ = id => document.getElementById(id);
+    const slug = s => String(s||"").trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
 
-    row.append(name, small, qtyWrap, minWrap);
-    list.append(row);
-  });
-}
-
-// Search box events (debounced)
-(function attachSearch() {
-  const input = document.getElementById("invSearch");
-  const clearBtn = document.getElementById("btnClearSearch");
-  let t;
-  input?.addEventListener("input", () => {
-    window.clearTimeout(t);
-    t = window.setTimeout(() => {
-      searchQ = input.value.trim();
+    async function loadInventory(){
+      const snap = await getDocs(collection(db, "inventory"));
+      invAll = []; snap.forEach(d => invAll.push({ id:d.id, ...d.data() }));
       renderInventory();
-    }, 120);
-  });
-  clearBtn?.addEventListener("click", () => {
-    searchQ = "";
-    if (input) input.value = "";
-    renderInventory();
-  });
-})();
+    }
 
-  const list = document.querySelector('#list');
+    function matches(it, q){
+      if (!q) return true;
+      const s=q.toLowerCase();
+      return [it.name, it.partNumber, it.location].some(v => (v||"").toLowerCase().includes(s));
+    }
 
-  // styles (adds small buttons for Min +/-)
-  const style = document.createElement('style');
-  style.textContent = `
-    .item { display:flex; align-items:center; gap:12px; margin:10px 0; }
-    .name { font-weight:600; min-width:220px; }
-    .sku  { opacity:.7; font-size:.9em }
-    .qty, .minv { min-width:3ch; text-align:center; display:inline-block; }
-    .meta { opacity:.7; font-size:.9em; }
-    .low  { color:#b00020; font-weight:700; }
-    button { padding:2px 8px; }
-  `;
-  document.head.appendChild(style);
+    function renderInventory(){
+      list.innerHTML = "";
+      const rows = invAll.filter(it=>matches(it,searchQ))
+                         .sort((a,b)=>(a.name||"").localeCompare(b.name||""));
 
-  // Live subscribe
-  onSnapshot(
-    collection(db, 'inventory'),
-    (snap) => {
-      const items = snap.docs.map(d => ({ id:d.id, ...d.data() }))
-        .sort((a,b) => (a.name||a.id).localeCompare(b.name||b.id));
+      if (!rows.length){ list.innerHTML = `<div class="meta">No items match “${searchQ}”.</div>`; return; }
 
-      list.innerHTML = '';
-      items.forEach(it => {
-        const qty = Number(it.qty ?? 0);
-        const min = Number(it.minQty ?? 0);
-        const low = qty < min;
-
-        const row = document.createElement('div');
-        row.className = 'item';
+      rows.forEach(it=>{
+        const qty = Number(it.qty ?? 0), min = Number(it.minQty ?? 0), low = qty < min;
+        const row = document.createElement("div");
+        row.className = "item" + (low? " low":"");
         row.dataset.id = it.id;
         row.innerHTML = `
-          <span class="name ${low?'low':''}">${it.name || it.partNumber || it.id} <span class="sku">(${it.partNumber||''})</span></span>
-
+          <span class="name">${it.name || "(unnamed)"} <span class="sku">(${it.partNumber || it.id})</span></span>
           <button data-act="dec">-</button>
-          <span class="qty ${low?'low':''}">${qty}</span>
+          <span class="qty">${qty}</span>
           <button data-act="inc">+</button>
-
-          <span class="meta" style="margin-left:8px">Min:</span>
+          <span class="min">Min:</span>
           <button data-act="min-dec">-</button>
           <span class="minv">${min}</span>
           <button data-act="min-inc">+</button>
+          <span class="meta" style="margin-left:auto">${it.location||''}</span>
         `;
         list.appendChild(row);
       });
-    },
-    (err) => { list.innerHTML = `<div style="color:#ff6b6b">Error: ${err.message}</div>`; }
-  );
-
-  // Click handler for all +/- buttons
-  list.addEventListener('click', async (e)=>{
-    const btn = e.target.closest('button');
-    if (!btn) return;
-    const card = btn.closest('.item');
-    const id   = card?.dataset.id;
-    if (!id) return;
-
-    const act = btn.dataset.act;
-    try {
-      if (act === 'inc')      await updateDoc(doc(db,'inventory',id), { qty:    increment(1) });
-      else if (act === 'dec') await updateDoc(doc(db,'inventory',id), { qty:    increment(-1) });
-      else if (act === 'min-inc') await updateDoc(doc(db,'inventory',id), { minQty: increment(1) });
-      else if (act === 'min-dec') await updateDoc(doc(db,'inventory',id), { minQty: increment(-1) });
-    } catch (err) {
-      alert('Update failed: ' + err.message);
-      console.error(err);
     }
-  });
-</script>
+
+    // +/- handlers
+    list.addEventListener('click', async (e)=>{
+      const btn=e.target.closest('button'); if(!btn) return;
+      const card=btn.closest('.item'); if(!card) return;
+      const id=card.dataset.id; const act=btn.dataset.act;
+      const ref=doc(db,'inventory',id);
+
+      try{
+        if (act==='inc' || act==='dec'){
+          const current = Number(card.querySelector('.qty').textContent||0);
+          const q = act==='inc' ? current+1 : Math.max(0,current-1);
+          await updateDoc(ref,{ qty:q });
+          const min = Number(card.querySelector('.minv').textContent||0);
+          card.querySelector('.qty').textContent = q;
+          card.classList.toggle('low', q < min);
+        } else if (act==='min-inc' || act==='min-dec'){
+          const current = Number(card.querySelector('.minv').textContent||0);
+          const m = act==='min-inc' ? current+1 : Math.max(0,current-1);
+          await updateDoc(ref,{ minQty:m });
+          const qty = Number(card.querySelector('.qty').textContent||0);
+          card.querySelector('.minv').textContent = m;
+          card.classList.toggle('low', qty < m);
+        }
+      }catch(err){ alert('Update failed: '+err.message); }
+    });
+
+    // search wiring
+    (function(){
+      const input = $("invSearch"), clear = $("btnClearSearch");
+      let t;
+      input?.addEventListener("input", ()=>{
+        clearTimeout(t);
+        t=setTimeout(()=>{ searchQ=input.value.trim(); renderInventory(); }, 120);
+      });
+      clear?.addEventListener("click", ()=>{
+        searchQ=""; if(input) input.value=""; renderInventory();
+      });
+    })();
+
+    // add item
+    $("btnAdd").addEventListener("click", async ()=>{
+      const name = $("add_name").value.trim();
+      const part = $("add_part").value.trim();
+      const loc  = $("add_loc").value.trim();
+      const qty  = parseInt($("add_qty").value||"0",10);
+      const min  = parseInt($("add_min").value||"0",10);
+      const msg  = $("addMsg");
+      if(!name){ msg.textContent="Name is required."; msg.style.color="#f66"; return; }
+      try{
+        const id = part ? slug(part) : slug(name);
+        const ref = doc(db,"inventory",id);
+        const existing = await getDoc(ref);
+        if (existing.exists()){ msg.textContent=`ID "${id}" already exists.`; msg.style.color="#e6a700"; return; }
+        await setDoc(ref,{ name, partNumber:part||"", location:loc||"", qty:isNaN(qty)?0:qty, minQty:isNaN(min)?0:min, notes:"" });
+        msg.textContent="Saved."; msg.style.color="#9aa0a6";
+        ["add_name","add_part","add_loc"].forEach(i=>$(i).value="");
+        $("add_qty").value="0"; $("add_min").value="0";
+        await loadInventory();
+      }catch(err){ console.error(err); msg.textContent=err.message||"Failed to save."; msg.style.color="#f66"; }
+    });
+
+    // initial load
+    loadInventory();
+  </script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', ()=>{
+      document.querySelectorAll('a[href$=".html"]').forEach(a=>{
+        const u=new URL(a.getAttribute('href'), location.href);
+        if(!u.search) u.search = appVersion; else u.search += '&'+appVersion;
+        a.setAttribute('href', u.pathname + u.search + u.hash);
+      });
+    });
+  </script>
 </body>
 </html>
