@@ -92,6 +92,142 @@
   };
   const app = initializeApp(firebaseConfig);
   const db  = getFirestore(app);
+  // ------- Search + Add Item wiring -------
+
+// cache for all inventory documents (so search doesn't re-hit Firestore)
+let invAll = [];
+let searchQ = "";
+
+// Small slug helper (for stable IDs)
+function slug(s) {
+  return String(s || "")
+    .trim().toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+// Case-insensitive match against name/part/location
+function matches(it, q) {
+  if (!q) return true;
+  const s = q.toLowerCase();
+  return [it.name, it.partNumber, it.location].some(v => (v || "").toLowerCase().includes(s));
+}
+
+// Renders the list from invAll using the existing row builder
+async function loadInventory() {
+  // fetch, fill cache, then render
+  const snap = await getDocs(collection(db, "inventory"));
+  invAll = [];
+  snap.forEach(d => invAll.push({ id: d.id, ...d.data() }));
+  renderInventory();
+}
+
+// Use your current row builder, but filter first
+function renderInventory() {
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+  const rows = invAll
+    .filter(it => matches(it, searchQ))
+    .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+  if (rows.length === 0) {
+    list.innerHTML = `<div class="meta">No items match “${searchQ}”.</div>`;
+    return;
+  }
+
+  // ---- Build each row (reuse your existing rendering/handlers) ----
+  // If you already had code that looped over Firestore docs to make rows,
+  // move that code here and replace the loop source with "rows".
+  rows.forEach(it => {
+    // Example structure; keep your existing +/- and Min handlers:
+    const row = document.createElement("div");
+    row.className = "row";
+
+    // name + part
+    const name = document.createElement("b");
+    name.textContent = it.name || "(unnamed)";
+    const small = document.createElement("span");
+    small.className = "meta";
+    small.style.marginLeft = "6px";
+    small.textContent = `(${it.partNumber || it.id})`;
+
+    // qty / buttons
+    const qtyWrap = document.createElement("span");
+    qtyWrap.style.marginLeft = "12px";
+    const btnMinus = document.createElement("button");
+    btnMinus.textContent = "–";
+    const qtyVal = document.createElement("span");
+    qtyVal.style.margin = "0 8px";
+    qtyVal.textContent = it.qty ?? 0;
+    const btnPlus = document.createElement("button");
+    btnPlus.textContent = "+";
+
+    // min editor
+    const minWrap = document.createElement("span");
+    minWrap.className = "meta";
+    minWrap.style.marginLeft = "12px";
+    const minLabel = document.createElement("span");
+    minLabel.textContent = "Min: ";
+    const minInput = document.createElement("input");
+    minInput.type = "number";
+    minInput.value = it.minQty ?? 0;
+    minInput.style.width = "56px";
+
+    // red if below min
+    const setLowStyle = () => {
+      const low = (it.qty ?? 0) < (it.minQty ?? 0);
+      name.style.color = low ? "var(--danger, #e5484d)" : "";
+    };
+    setLowStyle();
+
+    // wire +/- and min
+    btnMinus.addEventListener("click", async () => {
+      const q = Math.max(0, (it.qty ?? 0) - 1);
+      await updateDoc(doc(db, "inventory", it.id), { qty: q });
+      it.qty = q;
+      qtyVal.textContent = q;
+      setLowStyle();
+    });
+    btnPlus.addEventListener("click", async () => {
+      const q = (it.qty ?? 0) + 1;
+      await updateDoc(doc(db, "inventory", it.id), { qty: q });
+      it.qty = q;
+      qtyVal.textContent = q;
+      setLowStyle();
+    });
+    minInput.addEventListener("change", async () => {
+      const m = parseInt(minInput.value || "0", 10);
+      await updateDoc(doc(db, "inventory", it.id), { minQty: isNaN(m) ? 0 : m });
+      it.minQty = isNaN(m) ? 0 : m;
+      setLowStyle();
+    });
+
+    qtyWrap.append(btnMinus, qtyVal, btnPlus);
+    minWrap.append(minLabel, minInput);
+
+    row.append(name, small, qtyWrap, minWrap);
+    list.append(row);
+  });
+}
+
+// Search box events (debounced)
+(function attachSearch() {
+  const input = document.getElementById("invSearch");
+  const clearBtn = document.getElementById("btnClearSearch");
+  let t;
+  input?.addEventListener("input", () => {
+    window.clearTimeout(t);
+    t = window.setTimeout(() => {
+      searchQ = input.value.trim();
+      renderInventory();
+    }, 120);
+  });
+  clearBtn?.addEventListener("click", () => {
+    searchQ = "";
+    if (input) input.value = "";
+    renderInventory();
+  });
+})();
 
   const list = document.querySelector('#list');
 
