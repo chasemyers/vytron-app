@@ -1,63 +1,83 @@
-// -------- Firebase (CDN modules) --------
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+// Firebase access (for saves if you already save machines here)
+const F = (window.firebase && window.firebase.apps && window.firebase.apps.length) ? {
+  db: firebase.firestore(),
+  auth: firebase.auth()
+} : null;
 
-// -------- Firebase config (yours) --------
-const firebaseConfig = {
-  apiKey: "AIzaSyAYA7OzOQBpyHsOYIDK89Z4-8BbrRleZ7A",
-  authDomain: "vytron-maintenance-app.firebaseapp.com",
-  projectId: "vytron-maintenance-app",
-  storageBucket: "vytron-maintenance-app.firebasestorage.app",
-  messagingSenderId: "951172681125",
-  appId: "1:951172681125:web:278450c515a89547f32c4c",
-  measurementId: "G-FEKBB1K6V7"
-};
+if (F) { F.auth.signInAnonymously().catch(()=>{}); }
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-// --- helpers ---
-const $ = sel => document.querySelector(sel);
-const detail = $("#detail");
-
-function lineRow(label, value) {
-  return `<div style="margin:4px 0"><strong>${label}:</strong> ${value || ""}</div>`;
-}
-
-function renderDoc(id, d) {
-  detail.innerHTML = `
-    <h2>${d.name ? d.name : "(unnamed)"} • ${id}</h2>
-    ${lineRow("Line", d.line)}${lineRow("Station", d.station)}
-    ${lineRow("Make/Model", [d.make, d.model].filter(Boolean).join(" "))}
-    ${lineRow("Serial", d.serial)}${lineRow("Location", d.location)}
-    ${d.notes ? `<div class="meta" style="margin-top:8px">${d.notes}</div>` : ""}
-
-    <div style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap">
-      <a class="btn" href="./index.html">&larr; Back to list</a>
-      <a class="btn primary" href="./index.html?id=${encodeURIComponent(id)}#edit">Edit this item</a>
-    </div>
-  `;
-}
-
-// --- load based on ?id= ---
-const params = new URLSearchParams(location.search);
-const id = params.get("id");
-
-(async () => {
-  if (!id) {
-    detail.innerHTML = `<p>No equipment ID in URL.</p>
-                        <p><a class="btn" href="./index.html">Back to list</a></p>`;
-    return;
-  }
-  try {
-    const snap = await getDoc(doc(db, "equipment", id));
-    if (!snap.exists()) {
-      detail.innerHTML = `<p>Equipment <code>${id}</code> not found.</p>
-                          <p><a class="btn" href="./index.html">Back to list</a></p>`;
+const Machines = {
+  async save(m) {
+    if (!F) {
+      // local fallback only (if you don't use Firestore on this page)
+      const raw = localStorage.getItem('vytron_db');
+      const db = raw ? JSON.parse(raw) : { machines:[], parts:[], repairs:[] };
+      db.machines.push({ ...m, id: crypto.randomUUID(), created: Date.now() });
+      localStorage.setItem('vytron_db', JSON.stringify(db));
       return;
     }
-    renderDoc(id, snap.data());
-  } catch (e) {
-    detail.innerHTML = `<p>Error loading data.</p><pre class="meta">${e.message}</pre>`;
+    await F.db.collection('machines').add({ ...m, created: Date.now() });
   }
-})();
+};
+
+// -------- Plate OCR parsing tuned for your plant --------
+function parsePlateText(text){
+  const lines = (text||'').split(/\n+/).map(s=>s.trim()).filter(Boolean);
+  const whole = lines.join(' ');
+
+  // Vytron blue plate often shows "NO."
+  const vytron = (whole.match(/\bNO\.?\s*([A-Z0-9-]+)/i)||[])[1] || '';
+
+  const mfg = (lines.find(l=>/\b(BALDOR|SIEMENS|STERLING|WEG|ABB|SEW|LENZE|SICK)\b/i.test(l))||'').trim();
+  const model = (whole.match(/\b(MODEL|CAT\.?\s*NO|TYPE)\s*[:#]?\s*([A-Z0-9-]+)/i)||[])[2]
+             || (lines.find(l=>/^[A-Z0-9-]{4,}$/.test(l))||'');
+  const serial = (whole.match(/\b(SER(IAL)?|S\/N)\s*[:#]?\s*([A-Z0-9-]+)/i)||[])[3] || '';
+  const volts = (whole.match(/\bVOLTS?\s*[:#]?\s*([0-9/]+)\b/i)||[])[1] || '';
+  const amps  = (whole.match(/\bAMPS?\s*[:#]?\s*([0-9.\/]+)\b/i)||[])[1] || '';
+
+  return { mfg, model, serial, volts, amps, vytron };
+}
+
+async function runPlateOCR(file){
+  if(!file) return alert('Choose a plate photo first.');
+  const worker = await Tesseract.createWorker('eng');
+  const { data:{ text } } = await worker.recognize(file);
+  await worker.terminate();
+
+  const { mfg, model, serial, volts, amps, vytron } = parsePlateText(text || '');
+  if (mfg)   document.getElementById('m_mfg').value    = mfg;
+  if (model) document.getElementById('m_model').value  = model;
+  if (serial)document.getElementById('m_serial').value = serial;
+  if (volts) document.getElementById('m_volts').value  = volts;
+  if (amps)  document.getElementById('m_amps').value   = amps;
+  if (vytron)document.getElementById('m_vytron').value = vytron;
+
+  alert('Plate OCR complete. Review fields and Save.');
+}
+
+// Wire up UI
+const btn = document.getElementById('runPlateOCR');
+if (btn) {
+  btn.addEventListener('click', async ()=>{
+    const f = document.getElementById('machinePhoto').files[0];
+    await runPlateOCR(f);
+  });
+}
+
+const saveBtn = document.getElementById('saveMachine');
+if (saveBtn) {
+  saveBtn.addEventListener('click', async ()=>{
+    const m = {
+      displayName: (document.getElementById('m_displayName')||{}).value || '',
+      vytronTag: (document.getElementById('m_vytron')||{}).value || '',
+      mfg: (document.getElementById('m_mfg')||{}).value || '',
+      model: (document.getElementById('m_model')||{}).value || '',
+      serial: (document.getElementById('m_serial')||{}).value || '',
+      volts: (document.getElementById('m_volts')||{}).value || '',
+      amps: (document.getElementById('m_amps')||{}).value || '',
+      area: (document.getElementById('m_area')||{}).value || ''
+    };
+    await Machines.save(m);
+    alert('Machine saved.');
+  });
+}
