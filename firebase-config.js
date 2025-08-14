@@ -1,5 +1,4 @@
 <!-- FILE: firebase-config.js -->
-<script>
 // Public client config (safe to expose for Firebase client apps)
 const firebaseConfig = {
   apiKey: "AI...yourkey...",
@@ -19,4 +18,3 @@ window.storage = firebase.storage();
 
 // Sign in (anonymous) so reads/writes work
 auth.signInAnonymously().catch(console.error);
-</script>
