@@ -1,12 +1,13 @@
 <!-- FILE: firebase-config.js -->
-// Public client config (safe to expose for Firebase client apps)
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AI...yourkey...",
-  authDomain: "your-project.firebaseapp.com",
-  projectId: "your-project",
-  storageBucket: "your-project.appspot.com",
-  messagingSenderId: "##########",
-  appId: "1:##########:web:##########"
+  apiKey: "AIzaSyAYA7OzOQBpyHsOYIDK89Z4-8BbrRleZ7A",
+  authDomain: "vytron-maintenance-app.firebaseapp.com",
+  projectId: "vytron-maintenance-app",
+  storageBucket: "vytron-maintenance-app.firebasestorage.app",
+  messagingSenderId: "951172681125",
+  appId: "1:951172681125:web:278450c515a89547f32c4c",
+  measurementId: "G-FEKBB1K6V7"
 };
 // Initialize Firebase (Compat SDKs since your pages use <script> tags)
 firebase.initializeApp(firebaseConfig);
